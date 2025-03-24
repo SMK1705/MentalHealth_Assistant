@@ -79,7 +79,7 @@ def landing_page():
 def chat_page():
     st.title("🧠 Mental Health Counselor Guidance")
 
-    # Display messages freshly each time
+    # Display messages freshly each time using Streamlit's native chat components
     for msg in st.session_state.conversation:
         if msg["role"] == "user":
             with st.chat_message("user"):
@@ -88,41 +88,40 @@ def chat_page():
             with st.chat_message("assistant"):
                 st.write(msg["content"])
 
-    # Chat input
+    # Chat input with spinner for each conversation message generation
     user_message = st.chat_input("Type your message here...")
     if user_message:
-        # User message append
+        # Append user message
         st.session_state.conversation.append({"role": "user", "content": user_message})
         st.session_state.conversation_model.add_message(Message(content=user_message, is_user=True))
 
-        # Conversation context
+        # Build conversation context
         conversation_text = "\n".join(
             f"{msg['role'].capitalize()}: {msg['content']}" for msg in st.session_state.conversation
         )
 
-        try:
-            # Generate reply
-            guidance = generate_counselor_guidance(user_message, conversation_text)
-            assistant_reply = guidance.get("generated_advice", "No advice available.")
-        except Exception as e:
-            logger.exception("Guidance generation error")
-            assistant_reply = "I'm sorry, something went wrong."
+        with st.spinner("Processing your message..."):
+            try:
+                guidance = generate_counselor_guidance(user_message, conversation_text)
+                assistant_reply = guidance.get("generated_advice", "No advice available.")
+            except Exception as e:
+                logger.exception("Guidance generation error")
+                assistant_reply = "I'm sorry, something went wrong."
 
-        # Assistant message append
+        # Append assistant's reply
         st.session_state.conversation.append({"role": "assistant", "content": assistant_reply})
         st.session_state.conversation_model.add_message(Message(content=assistant_reply, is_user=False))
 
         # Archive conversation
         archive_conversation(st.session_state.conversation_model)
 
-        # Refresh to display new message
+        # Refresh display to show new message
         st.rerun()
 
-    # Report button
+    # Report generation section with spinner
     if st.button("Exit Conversation and Show Report", key="exit_button", help="Generate detailed patient report"):
         with st.spinner("Generating your detailed patient report..."):
             try:
-                # Compile full conversation text for analysis
                 conversation_text = "\n".join(
                     f"{msg['role'].capitalize()}: {msg['content']}" for msg in st.session_state.conversation
                 )
@@ -131,7 +130,7 @@ def chat_page():
                 classifier = load_topic_classifier()
                 predicted_topic, topic_confidence = predict_topic(conversation_text, classifier)
                 
-                # Evaluate overall sentiment of the conversation
+                # Evaluate overall sentiment
                 sentiment_score = simple_sentiment_analysis(conversation_text)
                 sentiment = "Positive" if sentiment_score > 0 else "Negative" if sentiment_score < 0 else "Neutral"
                 
@@ -147,14 +146,12 @@ def chat_page():
                     "Ensure that the report is organized with clear headings and bullet points."
                 )
                 
-                # Generate recommendations using LLM-based advice generation
                 recommendations_obj = generate_advice(prompt)
                 if isinstance(recommendations_obj, list) and hasattr(recommendations_obj[0], "content"):
                     recommendations = recommendations_obj[0].content
                 else:
                     recommendations = str(recommendations_obj)
                 
-                # Display the report in a structured format
                 st.divider()
                 st.subheader("📝 Patient Report")
                 st.markdown(f"**Predicted Topic:** {predicted_topic}  \n**Confidence:** {topic_confidence:.2f}")
@@ -166,7 +163,7 @@ def chat_page():
                 logger.exception("Error generating report")
                 st.error("An error occurred while generating the patient report. Please try again later.")
 
-# Page Navigation
+# Main Navigation
 if st.session_state.page == "landing":
     landing_page()
 elif st.session_state.page == "chat":
