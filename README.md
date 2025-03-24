@@ -30,32 +30,33 @@ The goal of this project is to create a web-based tool that mental health counse
 ## Project Structure
 
 ```bash
-    MentalHealthChatbot/
-    ├── .env                    # Environment variables (not committed)
-    ├── .streamlit/
-    │   └── config.toml         # Streamlit configuration (e.g., runOnSave = false)
-    ├── Dockerfile              # (Optional) For container deployments
-    ├── requirements.txt        # List of dependencies (Streamlit, pymongo, torch, etc.)
-    ├── config.py               # Application configuration (loads .env)
-    ├── logging_config.py       # Centralized logging configuration
-    ├── schemas.py              # Pydantic models for messages and conversations
-    ├── patient_profile.py      # Code to retrieve and update patient profiles
-    ├── response_classifier.py  # Classifier for provider response types
-    ├── safety.py               # Safety checker for red-flag terms and protocols
-    ├── semantic_search.py      # Semantic search implementation using embeddings and Pinecone
-    ├── topic_classifier.py     # Zero-shot topic classifier
-    ├── unified_guidance.py     # Integrates conversation history, semantic search, and LLM advice generation
-    ├── urgency_detector.py     # Detects urgency via emotion classification
-    ├── vector_store.py         # Manages document embeddings and interactions with Pinecone
-    ├── data_loader.py          # Loads and converts counseling transcripts from MongoDB
-    ├── llm_rag.py              # LLM-based retrieval-augmented generation for advice
-    ├── main.py                 # (Optional) Command-line interface for testing components
-    ├── ml_model.py             # ML model for predicting upvotes/popularity
-    ├── patient_ml.py           # Simple sentiment analysis for patient messages
-    ├── archiver.py             # Archives conversations to the database
-    ├── chatbot.py              # (Optional) Chatbot logic for interactive sessions
-    ├── clustering.py           # Clusters patient problems using embeddings
-    └── app_chat.py             # Streamlit-based chatbot UI with conversation memory, exit button, and report generation
+MentalHealthChatbot/
+├── .env                    # Environment variables (not committed)
+├── .streamlit/
+│   └── config.toml         # Streamlit configuration (e.g., runOnSave = false)
+├── Dockerfile              # (Optional) For container deployments
+├── requirements.txt        # List of dependencies (Streamlit, pymongo, torch, etc.)
+├── config.py               # Application configuration (loads .env)
+├── logging_config.py       # Centralized logging configuration
+├── schemas.py              # Pydantic models for messages and conversations
+├── patient_profile.py      # Code to retrieve and update patient profiles
+├── response_classifier.py  # Classifier for provider response types
+├── safety.py               # Safety checker for red-flag terms and protocols
+├── semantic_search.py      # Semantic search implementation using embeddings and Pinecone
+├── topic_classifier.py     # Zero-shot topic classifier
+├── unified_guidance.py     # Integrates conversation history, semantic search, and LLM advice generation
+├── urgency_detector.py     # Detects urgency via emotion classification
+├── vector_store.py         # Manages document embeddings and interactions with Pinecone
+├── data_loader.py          # Loads and converts counseling transcripts from MongoDB
+├── llm_rag.py              # LLM-based retrieval-augmented generation for advice
+├── main.py                 # (Optional) Command-line interface for testing components
+├── ml_model.py             # ML model for predicting upvotes/popularity
+├── patient_ml.py           # Simple sentiment analysis for patient messages
+├── archiver.py             # Archives conversations to the database
+├── chatbot.py              # (Optional) Chatbot logic for interactive sessions
+├── clustering.py           # Clusters patient problems using embeddings
+└── app_chat.py             # Streamlit-based chatbot UI with conversation memory, exit button, and report generation
+```
 
 
 ## Setup and Installation
