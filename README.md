@@ -1,31 +1,28 @@
 # Mental Health Counselor Guidance System
 
-A comprehensive, AI-powered web application designed to assist mental health counselors by providing tailored guidance based on patient conversation data. The system combines data ingestion, natural language processing, machine learning, and LLM-based advice generation, all wrapped in an interactive chatbot-style user interface built with Streamlit.
+An AI-powered web application designed to assist mental health counselors by providing tailored guidance based on patient conversation data. This system integrates data ingestion, natural language processing, machine learning, and LLM-based advice generation, all within an interactive chatbot interface built using Streamlit.
 
 ## Overview
 
-The goal of this project is to create a web-based tool that mental health counselors can use for on-demand guidance on how best to support patients. The application leverages historical counseling transcripts, semantic search, topic classification, sentiment analysis, and LLM (Retrieval-Augmented Generation) to surface actionable advice and generate detailed patient reports.
+This project aims to create a web-based tool for mental health counselors, offering on-demand guidance to better support patients. By leveraging historical counseling transcripts, semantic search, topic classification, sentiment analysis, and Retrieval-Augmented Generation (RAG), the application delivers actionable advice and generates detailed patient reports.
 
 ## Key Features
 
-- **Data Ingestion & Storage:**  
-  - Ingests mental health counseling transcripts from a MongoDB database.
-  - Archives patient conversations to ensure persistent storage.
+- **Data Management:**  
+    - Ingests and archives mental health counseling transcripts from a MongoDB database.
 
 - **Natural Language Processing & Machine Learning:**  
-  - **Semantic Search:** Uses HuggingFace embedding models and Pinecone for similarity search across counseling transcripts.
-  - **Topic Classification:** Employs a zero-shot classifier to predict the primary topic of the patient’s conversation.
-  - **Sentiment Analysis:** Implements a simple sentiment analysis to determine the overall emotional tone of the conversation.
-  - **ML Model:** Predicts quantitative measures (e.g., upvotes/popularity) from counseling texts.
+    - **Semantic Search:** Utilizes HuggingFace embedding models and Pinecone for similarity search across transcripts.  
+    - **Topic Classification:** Employs zero-shot classification to identify primary conversation topics.  
+    - **Sentiment Analysis:** Analyzes emotional tone using a simple sentiment analysis model.  
+    - **ML Predictions:** Predicts quantitative measures (e.g., popularity/upvotes) from counseling texts.
 
-- **LLM-Based Guidance Generation:**  
-  - Integrates retrieval-augmented generation (RAG) to provide context-aware, LLM-based advice.
-  - Combines current user input with conversation history to generate tailored recommendations.
+- **LLM-Based Guidance:**  
+    - Implements RAG to generate context-aware, tailored advice by combining user input with conversation history.
 
-- **Interactive Chatbot UI:**  
-  - A chat interface built with Streamlit that maintains conversation memory in session state.
-  - Provides a single input field for a natural, continuous chat experience.
-  - Includes an exit option that generates a comprehensive patient report, summarizing predicted topics, sentiment, and actionable recommendations.
+- **Interactive Chatbot Interface:**  
+    - Built with Streamlit, featuring conversation memory and a natural chat experience.  
+    - Includes an "Exit Conversation" option to generate a comprehensive patient report summarizing topics, sentiment, and recommendations.
 
 ## Project Structure
 
@@ -33,31 +30,30 @@ The goal of this project is to create a web-based tool that mental health counse
 MentalHealthChatbot/
 ├── .env                    # Environment variables (not committed)
 ├── .streamlit/
-│   └── config.toml         # Streamlit configuration (e.g., runOnSave = false)
-├── Dockerfile              # (Optional) For container deployments
-├── requirements.txt        # List of dependencies (Streamlit, pymongo, torch, etc.)
-├── config.py               # Application configuration (loads .env)
-├── logging_config.py       # Centralized logging configuration
-├── schemas.py              # Pydantic models for messages and conversations
-├── patient_profile.py      # Code to retrieve and update patient profiles
-├── response_classifier.py  # Classifier for provider response types
-├── safety.py               # Safety checker for red-flag terms and protocols
-├── semantic_search.py      # Semantic search implementation using embeddings and Pinecone
-├── topic_classifier.py     # Zero-shot topic classifier
-├── unified_guidance.py     # Integrates conversation history, semantic search, and LLM advice generation
-├── urgency_detector.py     # Detects urgency via emotion classification
-├── vector_store.py         # Manages document embeddings and interactions with Pinecone
-├── data_loader.py          # Loads and converts counseling transcripts from MongoDB
-├── llm_rag.py              # LLM-based retrieval-augmented generation for advice
-├── main.py                 # (Optional) Command-line interface for testing components
-├── ml_model.py             # ML model for predicting upvotes/popularity
-├── patient_ml.py           # Simple sentiment analysis for patient messages
+│   └── config.toml         # Streamlit configuration
+├── Dockerfile              # For container deployments (optional)
+├── requirements.txt        # Dependencies (Streamlit, pymongo, torch, etc.)
+├── config.py               # Application configuration
+├── logging_config.py       # Centralized logging setup
+├── schemas.py              # Pydantic models for data validation
+├── patient_profile.py      # Manages patient profiles
+├── response_classifier.py  # Classifies provider response types
+├── safety.py               # Detects red-flag terms and ensures safety protocols
+├── semantic_search.py      # Embedding-based semantic search
+├── topic_classifier.py     # Zero-shot topic classification
+├── unified_guidance.py     # Combines NLP and LLM for advice generation
+├── urgency_detector.py     # Detects urgency in conversations
+├── vector_store.py         # Manages embeddings and Pinecone interactions
+├── data_loader.py          # Loads transcripts from MongoDB
+├── llm_rag.py              # Implements RAG for advice generation
+├── main.py                 # CLI for testing components
+├── ml_model.py             # Predicts popularity/upvotes
+├── patient_ml.py           # Sentiment analysis for patient messages
 ├── archiver.py             # Archives conversations to the database
-├── chatbot.py              # (Optional) Chatbot logic for interactive sessions
-├── clustering.py           # Clusters patient problems using embeddings
-└── app_chat.py             # Streamlit-based chatbot UI with conversation memory, exit button, and report generation
+├── chatbot.py              # Chatbot logic (optional)
+├── clustering.py           # Clusters patient issues using embeddings
+└── app_chat.py             # Streamlit chatbot UI with memory and reporting
 ```
-
 
 ## Setup and Installation
 
@@ -65,59 +61,66 @@ MentalHealthChatbot/
 
 - Python 3.10 or later
 - MongoDB instance (local or hosted)
-- Pinecone API key and index configuration (if using Pinecone for embeddings)
-- API keys for any external LLM services (e.g., OpenAI, HuggingFace, or a local model)
+- Pinecone API key and index configuration (if using Pinecone)
+- API keys for external LLM services (e.g., OpenAI, HuggingFace)
 
 ### Installation Steps
 
 1. **Clone the Repository:**
 
-   ```bash
-   git clone https://github.com/SMK1705/MentalHealth_Assistant.git
-   cd mentalhealthchatbot
+     ```bash
+     git clone https://github.com/SMK1705/MentalHealth_Assistant.git
+     cd mentalhealthchatbot
+     ```
 
 2. **Create and Activate a Virtual Environment:**
 
-    ```bash
-    python -m venv .venv
-    source .venv/bin/activate   # On Windows use: .venv\Scripts\activate
+     ```bash
+     python -m venv .venv
+     source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+     ```
 
 3. **Install Dependencies:**
 
-    ```bash
-    pip install -r requirements.txt
+     ```bash
+     pip install -r requirements.txt
+     ```
 
 4. **Configure Environment Variables:**
 
-    Create a .env file in the project root with the necessary environment variables (e.g., MONGO_URI, GROQ_API_KEY, PINECONE_API_KEY, etc.).
+     Create a `.env` file in the project root with required variables (e.g., `MONGO_URI`, `PINECONE_API_KEY`, etc.).
 
 5. **Optional – Configure Streamlit File Watcher:**
 
-    Create a .streamlit/config.toml file with:
-    ```bash
-        [server]
-        runOnSave = false
+     Add the following to `.streamlit/config.toml`:
 
-**Usage**
-**Running the Chatbot Locally**
+     ```toml
+     [server]
+     runOnSave = false
+     ```
 
-    ```bash
-    python main.py
-    
-*Start the Streamlit application:*
+## Usage
 
-    ````bash
-    streamlit run app_chat.py
+### Running the Chatbot Locally
 
+Start the backend:
 
-This will open your default web browser at http://localhost:8501. You can then interact with the chatbot by typing messages into the input field. The conversation history is displayed dynamically, and clicking the "Exit Conversation and Show Report" button generates a detailed patient report that includes:
+```bash
+python main.py
+```
 
-Predicted topic and confidence
+Launch the Streamlit application:
 
-Overall sentiment (and sentiment score)
+```bash
+streamlit run app_chat.py
+```
 
-Recommendations on steps the patient should take to overcome their challenges
+This opens the chatbot interface in your browser at `http://localhost:8501`. Interact with the chatbot by typing messages. Click "Exit Conversation and Show Report" to generate a detailed patient report, including:
 
-**Testing the Backend Components**
+- Predicted topics and confidence levels  
+- Sentiment analysis and scores  
+- Actionable recommendations for patient challenges  
 
-You can also test individual modules (e.g., semantic search, ML model) by running their respective scripts (e.g., main.py, ml_model.py) or by using unit tests if available.
+### Testing Backend Components
+
+Test individual modules (e.g., semantic search, ML model) by running their respective scripts or using unit tests if available.
