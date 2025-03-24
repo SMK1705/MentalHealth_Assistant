@@ -76,11 +76,13 @@ MentalHealthChatbot/
 
 2. **Create and Activate a Virtual Environment:**
 
+    ```bash
     python -m venv .venv
     source .venv/bin/activate   # On Windows use: .venv\Scripts\activate
 
 3. **Install Dependencies:**
 
+    ```bash
     pip install -r requirements.txt
 
 4. **Configure Environment Variables:**
@@ -90,16 +92,19 @@ MentalHealthChatbot/
 5. **Optional – Configure Streamlit File Watcher:**
 
     Create a .streamlit/config.toml file with:
+    ```bash
         [server]
         runOnSave = false
 
 **Usage**
 **Running the Chatbot Locally**
 
-    python app_chat.py
-
+    ```bash
+    python main.py
+    
 *Start the Streamlit application:*
 
+    ````bash
     streamlit run app_chat.py
 
 
