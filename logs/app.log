@@ -221,3 +221,138 @@ AttributeError: module 'streamlit' has no attribute 'experimental_rerun'. Did yo
 2025-03-23 22:01:40,948 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
 2025-03-23 22:01:40,948 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
 2025-03-23 22:01:47,344 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-24 11:21:22,700 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-24 11:21:26,602 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 11:21:26,603 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 11:22:01,729 [ERROR] __main__: Error during chat processing
+Traceback (most recent call last):
+  File "D:\SMK\GenAI_Projects\Mental_health\chatbot\app_chat.py", line 110, in <module>
+    guidance = generate_counselor_guidance(user_message, conversation_text)
+  File "D:\SMK\GenAI_Projects\Mental_health\chatbot\unified_guidance.py", line 11, in generate_counselor_guidance
+    examples = semantic_search(user_input, top_k=3)
+  File "D:\SMK\GenAI_Projects\Mental_health\chatbot\semantic_search.py", line 39, in semantic_search
+    doc = collection.find_one({"questionID": str(qid)})
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\collection.py", line 1755, in find_one
+    for result in cursor.limit(-1):
+                  ~~~~~~~~~~~~^^^^
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\cursor.py", line 1281, in __next__
+    return self.next()
+           ~~~~~~~~~^^
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\cursor.py", line 1257, in next
+    if len(self._data) or self._refresh():
+                          ~~~~~~~~~~~~~^^
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\cursor.py", line 1205, in _refresh
+    self._send_message(q)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\cursor.py", line 1100, in _send_message
+    response = client._run_operation(
+        operation, self._unpack_response, address=self._address
+    )
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\_csot.py", line 119, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1752, in _run_operation
+    return self._retryable_read(
+           ~~~~~~~~~~~~~~~~~~~~^
+        _cmd,
+        ^^^^^
+    ...<4 lines>...
+        operation=operation.name,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1861, in _retryable_read
+    return self._retry_internal(
+           ~~~~~~~~~~~~~~~~~~~~^
+        func,
+        ^^^^^
+    ...<7 lines>...
+        operation_id=operation_id,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\_csot.py", line 119, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1828, in _retry_internal
+    ).run()
+      ~~~^^
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2565, in run
+    return self._read() if self._is_read else self._write()
+           ~~~~~~~~~~^^
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2700, in _read
+    self._server = self._get_server()
+                   ~~~~~~~~~~~~~~~~^^
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2656, in _get_server
+    return self._client._select_server(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._server_selector,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        operation_id=self._operation_id,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1647, in _select_server
+    server = topology.select_server(
+        server_selector,
+    ...<2 lines>...
+        operation_id=operation_id,
+    )
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\topology.py", line 401, in select_server
+    server = self._select_server(
+        selector,
+    ...<4 lines>...
+        operation_id=operation_id,
+    )
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\topology.py", line 379, in _select_server
+    servers = self.select_servers(
+        selector, operation, server_selection_timeout, address, operation_id
+    )
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\topology.py", line 286, in select_servers
+    server_descriptions = self._select_servers_loop(
+        selector, server_timeout, operation, operation_id, address
+    )
+  File "d:\SMK\GenAI_Projects\.venv\Lib\site-packages\pymongo\synchronous\topology.py", line 336, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+        f"{self._error_message(selector)}, Timeout: {timeout}s, Topology Description: {self.description!r}"
+    )
+pymongo.errors.ServerSelectionTimeoutError: SSL handshake failed: mentalhealthcluster-shard-00-00.k2csq.mongodb.net:27017: [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1018) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),SSL handshake failed: mentalhealthcluster-shard-00-02.k2csq.mongodb.net:27017: [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1018) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),SSL handshake failed: mentalhealthcluster-shard-00-01.k2csq.mongodb.net:27017: [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1018) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 67e1a2ab47ede5e2b15c1156, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mentalhealthcluster-shard-00-00.k2csq.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('SSL handshake failed: mentalhealthcluster-shard-00-00.k2csq.mongodb.net:27017: [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1018) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('mentalhealthcluster-shard-00-01.k2csq.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('SSL handshake failed: mentalhealthcluster-shard-00-01.k2csq.mongodb.net:27017: [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1018) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('mentalhealthcluster-shard-00-02.k2csq.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('SSL handshake failed: mentalhealthcluster-shard-00-02.k2csq.mongodb.net:27017: [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1018) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+2025-03-24 11:27:41,309 [INFO] __main__: Mental Health Counselor Guidance System started
+2025-03-24 11:27:41,310 [INFO] __main__: Starting Unified Guidance Chat Mode (multi-turn conversation)
+2025-03-24 11:27:45,705 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-24 11:27:46,220 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 11:27:46,221 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 11:31:37,966 [INFO] __main__: Mental Health Counselor Guidance System started
+2025-03-24 11:31:37,968 [INFO] __main__: Starting Unified Guidance Chat Mode (multi-turn conversation)
+2025-03-24 11:31:52,986 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-24 11:31:55,830 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 11:31:55,831 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 11:49:03,721 [INFO] __main__: Mental Health Counselor Guidance System started
+2025-03-24 11:49:03,725 [INFO] __main__: Starting Unified Guidance Chat Mode (multi-turn conversation)
+2025-03-24 11:49:08,335 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-24 11:49:10,007 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 11:49:10,007 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 11:51:34,560 [INFO] __main__: Mental Health Counselor Guidance System started
+2025-03-24 11:51:34,563 [INFO] __main__: Starting Unified Guidance Chat Mode (multi-turn conversation)
+2025-03-24 11:51:41,530 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-24 11:51:42,875 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 11:51:42,876 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 11:51:57,947 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 11:51:57,948 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 11:52:03,154 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-24 11:52:11,144 [INFO] __main__: Exiting chat mode
+2025-03-24 11:53:21,537 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-24 11:53:22,965 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 11:53:22,966 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 11:53:37,406 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 11:53:37,407 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 11:53:42,596 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-24 11:53:43,532 [INFO] archiver: Conversation 035fdc3e-a271-48c8-9098-393b7ddce1e9 archived successfully.
+2025-03-24 11:54:49,056 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 11:54:49,058 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 11:55:04,552 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 11:55:04,552 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 11:55:12,735 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-24 11:55:14,975 [INFO] archiver: Conversation 035fdc3e-a271-48c8-9098-393b7ddce1e9 archived successfully.
+2025-03-24 11:56:25,666 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 11:56:25,666 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 11:56:32,509 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
