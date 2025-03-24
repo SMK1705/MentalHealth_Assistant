@@ -1,0 +1,9 @@
+2025-03-23 19:44:05,563 [INFO] __main__: Mental Health Counselor Guidance System started
+2025-03-23 19:44:05,564 [INFO] __main__: Starting Unified Guidance Chat Mode (multi-turn conversation)
+2025-03-23 19:44:43,010 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-23 19:44:43,301 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 19:44:43,302 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 19:44:54,871 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 19:44:54,871 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 19:45:00,677 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 19:45:23,778 [INFO] __main__: Exiting chat mode

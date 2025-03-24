@@ -1,0 +1,1 @@
+web: streamlit run app_chat.py --server.enableCORS false

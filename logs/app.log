@@ -1,0 +1,223 @@
+2025-03-23 20:07:46,359 [INFO] __main__: Mental Health Counselor Guidance System started
+2025-03-23 20:07:46,360 [INFO] __main__: Starting Unified Guidance Chat Mode (multi-turn conversation)
+2025-03-23 20:08:03,198 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-23 20:08:03,882 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 20:08:03,882 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 20:08:16,861 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 20:08:16,861 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 20:08:23,010 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 20:09:25,677 [INFO] __main__: Exiting chat mode
+2025-03-23 20:39:37,375 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-23 20:39:37,929 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 20:39:37,930 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 20:39:50,552 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 20:39:50,552 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 20:39:56,412 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 20:54:48,025 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-23 20:54:48,376 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 20:54:48,376 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 20:54:57,844 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 20:54:57,844 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 20:55:02,233 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 20:55:56,209 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 20:55:56,209 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 20:56:04,576 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 20:56:04,576 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 20:56:13,839 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 20:57:00,506 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 20:57:00,506 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 20:57:08,710 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 20:57:08,710 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 20:57:13,990 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:02:18,352 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-23 21:02:18,720 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:02:18,720 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:02:33,276 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:02:33,276 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:02:39,476 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:10:42,881 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-23 21:10:43,246 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:10:43,246 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:10:52,606 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:10:52,606 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:10:57,744 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:10:58,545 [INFO] archiver: Conversation f0446553-1098-47ea-bed9-10a5f16a9e1f archived successfully.
+2025-03-23 21:10:58,546 [ERROR] __main__: Error during chat processing
+Traceback (most recent call last):
+  File "D:\SMK\GenAI_Projects\Mental_health\chatbot\app_chat.py", line 78, in <module>
+    st.experimental_rerun()
+    ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'streamlit' has no attribute 'experimental_rerun'. Did you mean: 'experimental_user'?
+2025-03-23 21:13:17,608 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-23 21:13:17,972 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:13:17,972 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:13:27,767 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:13:27,768 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:13:33,045 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:13:33,874 [INFO] archiver: Conversation a21d02a1-cf56-465f-b22a-7fc666591f5c archived successfully.
+2025-03-23 21:13:33,875 [ERROR] __main__: Error during chat processing
+Traceback (most recent call last):
+  File "D:\SMK\GenAI_Projects\Mental_health\chatbot\app_chat.py", line 78, in <module>
+    st.experimental_rerun()
+    ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'streamlit' has no attribute 'experimental_rerun'. Did you mean: 'experimental_user'?
+2025-03-23 21:14:30,197 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:14:30,198 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:14:38,303 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:14:38,304 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:14:42,941 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:14:43,247 [INFO] archiver: Conversation cc72e898-d1d1-4330-b0b3-dd7291d92784 archived successfully.
+2025-03-23 21:14:43,247 [ERROR] __main__: Error during chat processing
+Traceback (most recent call last):
+  File "D:\SMK\GenAI_Projects\Mental_health\chatbot\app_chat.py", line 78, in <module>
+    st.experimental_rerun()
+    ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'streamlit' has no attribute 'experimental_rerun'. Did you mean: 'experimental_user'?
+2025-03-23 21:18:29,777 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-23 21:18:30,132 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:18:30,133 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:18:41,586 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:18:41,587 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:18:46,696 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:18:47,491 [INFO] archiver: Conversation 7f3279c4-624a-407b-a336-040795a637d9 archived successfully.
+2025-03-23 21:19:29,873 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:19:29,873 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:19:39,846 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:19:39,847 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:19:44,983 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:19:45,278 [INFO] archiver: Conversation 7f3279c4-624a-407b-a336-040795a637d9 archived successfully.
+2025-03-23 21:21:53,684 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:21:53,684 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:22:03,097 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:22:03,097 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:22:08,619 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:22:08,951 [INFO] archiver: Conversation 7f3279c4-624a-407b-a336-040795a637d9 archived successfully.
+2025-03-23 21:22:43,410 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:22:43,410 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:22:52,052 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:22:52,053 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:22:56,949 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:22:57,253 [INFO] archiver: Conversation 7f3279c4-624a-407b-a336-040795a637d9 archived successfully.
+2025-03-23 21:23:28,287 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:23:28,288 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:23:41,050 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:23:41,051 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:23:46,254 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:23:46,552 [INFO] archiver: Conversation 7f3279c4-624a-407b-a336-040795a637d9 archived successfully.
+2025-03-23 21:24:13,324 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:24:13,329 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:24:20,791 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:24:20,791 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:24:25,749 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:24:26,068 [INFO] archiver: Conversation 7f3279c4-624a-407b-a336-040795a637d9 archived successfully.
+2025-03-23 21:28:12,036 [INFO] __main__: Mental Health Counselor Guidance System started
+2025-03-23 21:28:12,037 [INFO] __main__: Starting Unified Guidance Chat Mode (multi-turn conversation)
+2025-03-23 21:28:22,809 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-23 21:28:23,147 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:28:23,148 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:28:32,822 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:28:32,822 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:28:37,745 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:30:07,212 [INFO] __main__: Exiting chat mode
+2025-03-23 21:30:35,428 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-23 21:30:35,762 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:30:35,763 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:30:46,697 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:30:46,697 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:30:50,763 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:30:51,612 [INFO] archiver: Conversation af9eda98-b8e0-4bd9-a5a9-7002a3249985 archived successfully.
+2025-03-23 21:30:51,612 [ERROR] __main__: Error during chat processing
+Traceback (most recent call last):
+  File "D:\SMK\GenAI_Projects\Mental_health\chatbot\app_chat.py", line 88, in <module>
+    st.experimental_rerun()  # Force a rerun to update chat components if using st.chat_message
+    ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'streamlit' has no attribute 'experimental_rerun'. Did you mean: 'experimental_user'?
+2025-03-23 21:32:29,798 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:32:29,798 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:32:41,166 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:32:41,166 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:32:45,154 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:32:45,927 [INFO] archiver: Conversation 1ca8f071-6c2f-45b4-ba7b-3a46c16c7382 archived successfully.
+2025-03-23 21:33:37,206 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:33:37,207 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:33:46,806 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:33:46,806 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:33:51,268 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:33:51,579 [INFO] archiver: Conversation 1ca8f071-6c2f-45b4-ba7b-3a46c16c7382 archived successfully.
+2025-03-23 21:34:17,786 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:34:17,786 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:34:27,752 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:34:27,752 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:34:35,177 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:34:35,472 [INFO] archiver: Conversation 1ca8f071-6c2f-45b4-ba7b-3a46c16c7382 archived successfully.
+2025-03-23 21:34:51,470 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:34:51,471 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:34:59,092 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:34:59,092 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:35:04,080 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:35:04,377 [INFO] archiver: Conversation 1ca8f071-6c2f-45b4-ba7b-3a46c16c7382 archived successfully.
+2025-03-23 21:35:37,888 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:35:37,888 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:35:58,242 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:35:58,242 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:36:02,720 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:36:03,027 [INFO] archiver: Conversation 1ca8f071-6c2f-45b4-ba7b-3a46c16c7382 archived successfully.
+2025-03-23 21:36:46,166 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:36:46,167 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:36:56,641 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:36:56,642 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:37:02,519 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:37:02,864 [INFO] archiver: Conversation 1ca8f071-6c2f-45b4-ba7b-3a46c16c7382 archived successfully.
+2025-03-23 21:38:36,148 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:38:36,148 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:38:45,687 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:38:45,687 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:38:50,924 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:38:51,232 [INFO] archiver: Conversation 1ca8f071-6c2f-45b4-ba7b-3a46c16c7382 archived successfully.
+2025-03-23 21:48:52,855 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-23 21:48:53,209 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:48:53,209 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:49:03,708 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:49:03,708 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:49:10,039 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:49:10,847 [INFO] archiver: Conversation dbf9c2ff-02e5-4900-82ca-976f9409fcd8 archived successfully.
+2025-03-23 21:49:43,185 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:49:43,186 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:49:52,911 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:49:52,911 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:49:59,127 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:49:59,434 [INFO] archiver: Conversation dbf9c2ff-02e5-4900-82ca-976f9409fcd8 archived successfully.
+2025-03-23 21:50:47,671 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:50:47,672 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:51:02,107 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:51:02,107 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:51:09,039 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:51:09,471 [INFO] archiver: Conversation dbf9c2ff-02e5-4900-82ca-976f9409fcd8 archived successfully.
+2025-03-23 21:54:05,182 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:54:05,182 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:54:12,826 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:55:24,662 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:55:24,662 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:55:30,645 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:57:10,377 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-23 21:57:11,450 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:57:11,451 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:57:34,525 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:57:34,526 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:57:41,274 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:57:42,256 [INFO] archiver: Conversation ed84c593-2209-40e9-9b8a-53dd398e71ec archived successfully.
+2025-03-23 21:57:52,681 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:57:52,682 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:58:07,209 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:58:07,209 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:58:14,004 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:58:14,420 [INFO] archiver: Conversation ed84c593-2209-40e9-9b8a-53dd398e71ec archived successfully.
+2025-03-23 21:58:25,565 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:58:25,565 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:58:40,485 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 21:58:40,486 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 21:58:47,425 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-23 21:58:47,930 [INFO] archiver: Conversation ed84c593-2209-40e9-9b8a-53dd398e71ec archived successfully.
+2025-03-23 22:01:40,948 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-23 22:01:40,948 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-23 22:01:47,344 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
