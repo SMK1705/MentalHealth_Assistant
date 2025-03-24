@@ -1,3 +1,4 @@
+import ssl
 import pymongo
 import logging
 from langchain.schema import Document
@@ -9,7 +10,7 @@ def load_dataset():
     """Load dataset from MongoDB (MentalHealthDB, PatientConvo)
     and convert records to LangChain Document objects."""
     try:
-        client = pymongo.MongoClient(settings.safe_mongo_uri)
+        client = pymongo.MongoClient(settings.safe_mongo_uri, ssl=True, ssl_cert_reqs=ssl.CERT_NONE)
         db = client.get_database("MentalHealthDB")
         collection = db["PatientConvo"]
         
