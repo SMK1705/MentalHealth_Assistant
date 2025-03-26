@@ -497,3 +497,18 @@ pymongo.errors.ServerSelectionTimeoutError: SSL handshake failed: mentalhealthcl
 2025-03-24 14:57:28,674 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
 2025-03-24 14:57:28,675 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
 2025-03-24 14:57:34,028 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-24 15:18:25,523 [INFO] datasets: PyTorch version 2.6.0 available.
+2025-03-24 15:18:26,119 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 15:18:26,119 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 15:18:36,179 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 15:18:36,179 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 15:18:36,843 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 15:18:36,843 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 15:18:42,318 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-24 15:18:48,549 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 15:18:48,549 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 15:18:58,187 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-24 15:18:59,050 [INFO] archiver: Conversation 1f56c42b-dd4e-429b-b387-ffca28a6b354 archived successfully.
+2025-03-24 15:19:22,776 [INFO] sentence_transformers.SentenceTransformer: Use pytorch device_name: cpu
+2025-03-24 15:19:22,776 [INFO] sentence_transformers.SentenceTransformer: Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-03-24 15:19:28,258 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
