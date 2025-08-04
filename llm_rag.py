@@ -2,6 +2,7 @@ import logging
 from langchain.schema import HumanMessage
 from semantic_search import semantic_search
 from model_cache import get_chat_groq
+from prompt_templates import ADVICE_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
@@ -11,14 +12,10 @@ def generate_advice(query: str):
     
     examples_text = ""
     for ex in examples:
-         examples_text += f"Patient: {ex.get('questionText', '')}\nTherapist: {ex.get('answerText', '')}\n\n"
+        examples_text += f"Patient: {ex.get('questionText', '')}\nTherapist: {ex.get('answerText', '')}\n\n"
 
-    prompt = f"""You are a mental health counselor. Based on the following examples, suggest advice:
-Examples:
-{examples_text}
-New Query: {query}
-Advice:"""
+    prompt = ADVICE_TEMPLATE.format(examples_text=examples_text, query=query)
     llm = get_chat_groq()
     response = llm.invoke([HumanMessage(content=prompt)])
     logger.debug("Advice generated: %s", response)
-    return response
+    return response.content if hasattr(response, "content") else str(response)
