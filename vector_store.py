@@ -5,8 +5,8 @@ from typing import Any, List
 from config import settings
 from langchain.schema import Document, BaseRetriever
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
 from pinecone import Pinecone, ServerlessSpec
+from model_cache import get_embedding_model
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ def initialize_vector_store(docs):
     )
     split_docs = text_splitter.split_documents(docs)
     
-    embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embedding_model = get_embedding_model()
     pc = Pinecone(api_key=settings.pinecone_api_key)
     indexes = pc.list_indexes().names()
     if settings.pinecone_index_name not in indexes:
@@ -60,9 +60,19 @@ def initialize_vector_store(docs):
             existing_ids.update(fetch_response.vectors.keys())
     
     new_vectors = []
-    for vector_id, doc in candidate_docs.items():
-        if vector_id not in existing_ids:
-            embedding = embedding_model.embed_query(doc.page_content)
+    # Collect documents that are not yet in the index so we can
+    # embed them in a single batch. This significantly reduces the
+    # overhead of repeatedly calling the embedding model for each
+    # document and speeds up initialization for large corpora.
+    missing_docs = [
+        (vector_id, doc)
+        for vector_id, doc in candidate_docs.items()
+        if vector_id not in existing_ids
+    ]
+    if missing_docs:
+        texts = [doc.page_content for _, doc in missing_docs]
+        embeddings = embedding_model.embed_documents(texts)
+        for (vector_id, doc), embedding in zip(missing_docs, embeddings):
             meta = dict(doc.metadata) if doc.metadata else {}
             meta["text"] = doc.page_content
             new_vectors.append({
