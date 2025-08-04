@@ -1,14 +1,14 @@
 import pymongo
 import logging
 from config import settings
-from langchain_huggingface import HuggingFaceEmbeddings
 from pinecone import Pinecone
+from model_cache import get_embedding_model
 
 logger = logging.getLogger(__name__)
 
 def semantic_search(query: str, top_k: int = 5):
     logger.debug("Starting semantic search for query: %s", query)
-    embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embedding_model = get_embedding_model()
     query_embedding = embedding_model.embed_query(query)
 
     pc = Pinecone(api_key=settings.pinecone_api_key)
