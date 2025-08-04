@@ -9,14 +9,15 @@ logger = logging.getLogger(__name__)
 def load_dataset():
     """Load dataset from MongoDB (MentalHealthDB, PatientConvo)
     and convert records to LangChain Document objects."""
+    client = None
     try:
         client = pymongo.MongoClient(settings.safe_mongo_uri, ssl=True, ssl_cert_reqs=ssl.CERT_NONE)
         db = client.get_database("MentalHealthDB")
         collection = db["PatientConvo"]
-        
+
         data = list(collection.find({}))
         logger.info("Number of documents found: %d", len(data))
-        
+
         docs = [
             Document(
                 page_content=f"Patient: {row.get('questionText', '')}\nCounselor: {row.get('answerText', '')}",
@@ -32,7 +33,10 @@ def load_dataset():
             for row in data
         ]
         return docs
-        
+
     except Exception as e:
-        logger.error("Error loading dataset from MongoDB: %s", str(e))
-        exit(1)
+        logger.error("Error loading dataset from MongoDB: %s", str(e), exc_info=True)
+        raise
+    finally:
+        if client is not None:
+            client.close()
