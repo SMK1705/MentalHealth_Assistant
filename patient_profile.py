@@ -2,8 +2,8 @@ import time
 import pymongo
 import logging
 from config import settings
-from langchain_huggingface import HuggingFaceEmbeddings
 from pinecone import Pinecone, ServerlessSpec
+from model_cache import get_embedding_model
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def update_patient_profile(patient_id: str):
         return
     profile_text = "\n".join(patient_texts)
 
-    embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embedding_model = get_embedding_model()
     embedding = embedding_model.embed_query(profile_text)
 
     pc = Pinecone(api_key=settings.pinecone_api_key)

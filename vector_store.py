@@ -5,8 +5,8 @@ from typing import Any, List
 from config import settings
 from langchain.schema import Document, BaseRetriever
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
 from pinecone import Pinecone, ServerlessSpec
+from model_cache import get_embedding_model
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ def initialize_vector_store(docs):
     )
     split_docs = text_splitter.split_documents(docs)
     
-    embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embedding_model = get_embedding_model()
     pc = Pinecone(api_key=settings.pinecone_api_key)
     indexes = pc.list_indexes().names()
     if settings.pinecone_index_name not in indexes:

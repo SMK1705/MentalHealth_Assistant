@@ -11,7 +11,7 @@ class Message(BaseModel):
 class Conversation(BaseModel):
     session_id: str
     patient_id: str = ""  # Patient identifier
-    messages: List[Message] = []
+    messages: List[Message] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     
