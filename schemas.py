@@ -10,19 +10,22 @@ class Message(BaseModel):
 
 class Conversation(BaseModel):
     session_id: str
-    patient_id: str = ""  # Patient identifier
+    patient_id: str = ""
     messages: List[Message] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
-    
+
     def add_message(self, message: Message):
         self.messages.append(message)
         self.updated_at = datetime.now()
 
+class PatientProfile(BaseModel):
+    patient_id: str
+    medical_history: List[str] = Field(default_factory=list)
+    therapy_goals: List[str] = Field(default_factory=list)
 
 class SessionLog(BaseModel):
     """Metadata and analytical results for a counseling session."""
-
     session_id: str
     patient_id: str
     detected_topics: List[str] = Field(default_factory=list)

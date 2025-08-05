@@ -18,13 +18,17 @@ app = FastAPI(
 # Pydantic models for request and response
 class GuidanceRequest(BaseModel):
     user_input: str
+    patient_profile: Optional[Dict[str, Any]] = None
     conversation_history: Optional[str] = ""
 
 class GuidanceResponse(BaseModel):
     generated_advice: str
     predicted_topic: str
     topic_confidence: float
+    sentiment: str
+    sentiment_score: float
     historical_examples: List[Dict[str, Any]]
+    patient_profile: Dict[str, Any]
 
 
 @app.get("/")
@@ -35,12 +39,19 @@ def root():
 @app.post("/guidance", response_model=GuidanceResponse)
 def get_guidance(request: GuidanceRequest):
     try:
-        guidance = generate_counselor_guidance(request.user_input, request.conversation_history)
+        guidance = generate_counselor_guidance(
+            request.user_input,
+            request.patient_profile,
+            request.conversation_history,
+        )
         return GuidanceResponse(
             generated_advice=guidance.get("generated_advice", ""),
             predicted_topic=guidance.get("predicted_topic", ""),
             topic_confidence=guidance.get("topic_confidence", 0.0),
-            historical_examples=guidance.get("historical_examples", [])
+            sentiment=guidance.get("sentiment", ""),
+            sentiment_score=guidance.get("sentiment_score", 0.0),
+            historical_examples=guidance.get("historical_examples", []),
+            patient_profile=guidance.get("patient_profile", {}),
         )
     except Exception as e:
         logger.exception("Error generating guidance")
