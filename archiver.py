@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 def _patient_profile_exists(db, patient_id: str) -> bool:
     """Check if a patient profile exists in the database."""
 
-    return db["PatientProfiles"].count_documents(
+    return db["patients"].count_documents(
         {"patient_id": patient_id}, limit=1
     ) > 0
 
