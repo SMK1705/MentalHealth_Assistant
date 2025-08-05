@@ -52,6 +52,19 @@ def get_patient_profile(patient_id: str) -> PatientProfile | None:
 
     return PatientProfile(**data)
 
+
+def create_patient_profile(patient_id: str, medical_history=None, therapy_goals=None) -> PatientProfile:
+    client = pymongo.MongoClient(settings.safe_mongo_uri)
+    db = client.get_database("MentalHealthDB")
+    collection = db["patients"]
+    profile_data = {
+        "patient_id": patient_id,
+        "medical_history": medical_history or [],
+        "therapy_goals": therapy_goals or [],
+    }
+    collection.insert_one(profile_data)
+    return PatientProfile(**profile_data)
+
 def update_patient_profile(patient_id: str):
     conv = get_patient_conversation(patient_id)
     profile = get_patient_profile(patient_id)
