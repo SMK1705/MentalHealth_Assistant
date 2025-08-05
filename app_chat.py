@@ -47,6 +47,8 @@ if "conversation_model" not in st.session_state:
         patient_id="test_patient",
         messages=[]
     )
+if "patient_profile" not in st.session_state:
+    st.session_state.patient_profile = {}
 
 # Landing Page
 def landing_page():
@@ -87,6 +89,12 @@ def chat_page():
         else:
             with st.chat_message("assistant"):
                 st.write(msg["content"])
+                analysis = msg.get("analysis")
+                if analysis:
+                    st.caption(
+                        f"Topic: {analysis.get('topic')} (Confidence: {analysis.get('topic_confidence', 0.0):.2f}) | "
+                        f"Sentiment: {analysis.get('sentiment')} ({analysis.get('sentiment_score')})"
+                    )
 
     # Chat input with spinner for each conversation message generation
     user_message = st.chat_input("Type your message here...")
@@ -102,15 +110,32 @@ def chat_page():
 
         with st.spinner("Processing your message..."):
             try:
-                guidance = generate_counselor_guidance(user_message, conversation_text)
+                guidance = generate_counselor_guidance(
+                    user_message,
+                    st.session_state.patient_profile,
+                    conversation_text,
+                )
                 assistant_reply = guidance.get("generated_advice", "No advice available.")
+                analytics = {
+                    "topic": guidance.get("predicted_topic"),
+                    "topic_confidence": guidance.get("topic_confidence"),
+                    "sentiment": guidance.get("sentiment"),
+                    "sentiment_score": guidance.get("sentiment_score"),
+                }
             except Exception as e:
                 logger.exception("Guidance generation error")
                 assistant_reply = "I'm sorry, something went wrong."
+                analytics = {}
 
-        # Append assistant's reply
-        st.session_state.conversation.append({"role": "assistant", "content": assistant_reply})
-        st.session_state.conversation_model.add_message(Message(content=assistant_reply, is_user=False))
+        # Append assistant's reply along with analytics
+        st.session_state.conversation.append({
+            "role": "assistant",
+            "content": assistant_reply,
+            "analysis": analytics,
+        })
+        st.session_state.conversation_model.add_message(
+            Message(content=assistant_reply, is_user=False, metadata=analytics)
+        )
 
         # Archive conversation
         archive_conversation(st.session_state.conversation_model)

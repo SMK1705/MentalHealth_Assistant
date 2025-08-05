@@ -11,13 +11,14 @@ def unified_chat_mode():
     print("Unified Guidance Chat Mode (multi-turn conversation):")
     print("Type 'exit' to end the session.\n")
     conversation_history = ""
+    patient_profile = {}
     while True:
         user_input = input("Counselor: ").strip()
         if user_input.lower() == 'exit':
             logger.info("Exiting chat mode")
             break
         
-        guidance = generate_counselor_guidance(user_input, conversation_history)
+        guidance = generate_counselor_guidance(user_input, patient_profile, conversation_history)
         
         print("\n--- Generated Advice ---")
         print(guidance.get("generated_advice", "No advice generated."))
@@ -26,6 +27,11 @@ def unified_chat_mode():
         topic = guidance.get("predicted_topic", "N/A")
         score = guidance.get("topic_confidence", "N/A")
         print(f"{topic} (Confidence: {score})")
+
+        print("\n--- Sentiment ---")
+        sentiment = guidance.get("sentiment", "N/A")
+        s_score = guidance.get("sentiment_score", "N/A")
+        print(f"{sentiment} (Score: {s_score})")
         
         print("\n--- Historical Examples ---")
         examples = guidance.get("historical_examples", [])
