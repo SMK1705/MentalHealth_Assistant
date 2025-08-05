@@ -1,9 +1,11 @@
 import time
+import json
 import pymongo
 import logging
 from config import settings
 from pinecone import Pinecone, ServerlessSpec
 from model_cache import get_embedding_model
+from schemas import PatientProfile
 
 logger = logging.getLogger(__name__)
 
@@ -14,16 +16,59 @@ def get_patient_conversation(patient_id: str):
     conv = collection.find_one({"patient_id": patient_id})
     return conv
 
+
+def get_patient_profile(patient_id: str) -> PatientProfile | None:
+    client = pymongo.MongoClient(settings.safe_mongo_uri)
+    db = client.get_database("MentalHealthDB")
+    collection = db["patients"]
+    data = collection.find_one({"patient_id": patient_id})
+    if not data:
+        return None
+
+    medical_history = data.get("medical_history", [])
+    therapy_goals = data.get("therapy_goals", [])
+
+    if isinstance(medical_history, str):
+        try:
+            medical_history = json.loads(medical_history)
+        except json.JSONDecodeError:
+            medical_history = [medical_history]
+    if isinstance(therapy_goals, str):
+        try:
+            therapy_goals = json.loads(therapy_goals)
+        except json.JSONDecodeError:
+            therapy_goals = [therapy_goals]
+
+    data["medical_history"] = medical_history if isinstance(medical_history, list) else [medical_history]
+    data["therapy_goals"] = therapy_goals if isinstance(therapy_goals, list) else [therapy_goals]
+
+    collection.update_one(
+        {"patient_id": patient_id},
+        {"$set": {
+            "medical_history": data["medical_history"],
+            "therapy_goals": data["therapy_goals"]
+        }}
+    )
+
+    return PatientProfile(**data)
+
 def update_patient_profile(patient_id: str):
     conv = get_patient_conversation(patient_id)
-    if not conv:
-        logger.warning("No conversation found for patient %s", patient_id)
+    profile = get_patient_profile(patient_id)
+    if not conv and not profile:
+        logger.warning("No data found for patient %s", patient_id)
         return
 
     patient_texts = []
-    for msg in conv.get("messages", []):
-        if msg.get("is_user"):
-            patient_texts.append(msg.get("content", ""))
+    if conv:
+        for msg in conv.get("messages", []):
+            if msg.get("is_user"):
+                patient_texts.append(msg.get("content", ""))
+
+    if profile:
+        patient_texts.extend(profile.medical_history)
+        patient_texts.extend(profile.therapy_goals)
+
     if not patient_texts:
         logger.warning("No patient messages found in conversation for patient %s", patient_id)
         return

@@ -18,3 +18,9 @@ class Conversation(BaseModel):
     def add_message(self, message: Message):
         self.messages.append(message)
         self.updated_at = datetime.now()
+
+
+class PatientProfile(BaseModel):
+    patient_id: str
+    medical_history: List[str] = Field(default_factory=list)
+    therapy_goals: List[str] = Field(default_factory=list)
