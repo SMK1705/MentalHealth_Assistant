@@ -18,3 +18,15 @@ class Conversation(BaseModel):
     def add_message(self, message: Message):
         self.messages.append(message)
         self.updated_at = datetime.now()
+
+
+class SessionLog(BaseModel):
+    """Metadata and analytical results for a counseling session."""
+
+    session_id: str
+    patient_id: str
+    detected_topics: List[str] = Field(default_factory=list)
+    recommendations: List[str] = Field(default_factory=list)
+    risk_flags: List[str] = Field(default_factory=list)
+    sentiment_score: float = 0.0
+    created_at: datetime = Field(default_factory=datetime.now)
