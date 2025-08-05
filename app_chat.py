@@ -9,6 +9,7 @@ from schemas import Conversation, Message
 from topic_classifier import predict_topic, load_topic_classifier
 from patient_ml import simple_sentiment_analysis
 from llm_rag import generate_advice
+from patient_profile import get_patient_profile, create_patient_profile
 
 # Ensure an event loop is available
 try:
@@ -73,7 +74,19 @@ def landing_page():
         </div>
         """, unsafe_allow_html=True)
 
+    patient_id = st.text_input("Patient ID", key="patient_id_input")
+
     if st.button("Get Started"):
+        if not patient_id.strip():
+            st.error("Please enter a patient ID before starting.")
+            return
+
+        profile = get_patient_profile(patient_id)
+        if profile is None:
+            profile = create_patient_profile(patient_id)
+
+        st.session_state.patient_profile = profile.dict()
+        st.session_state.conversation_model.patient_id = patient_id
         st.session_state.page = "chat"
         st.rerun()
 
