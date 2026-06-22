@@ -11,26 +11,23 @@ logger = logging.getLogger(__name__)
 # Stateless crisis screener reused across calls.
 _safety_checker = SafetyChecker()
 
-def generate_counselor_guidance(
+
+def analyze_message(
     user_input: str,
     patient_profile: dict | None = None,
     conversation_history: str = "",
 ):
-    """Generate guidance for counselors based on the latest patient message.
+    """Run the non-LLM analysis for a message and assemble the LLM context.
 
-    Args:
-        user_input: Latest message from the patient.
-        patient_profile: Attributes describing the patient.
-        conversation_history: Prior conversation transcript.
-
-    Returns:
-        Dictionary with generated advice and analytics for the counselor.
+    Returns a dict with safety, urgency, topic, sentiment, the retrieved
+    ``historical_examples`` and the assembled ``analysis_context`` — but NOT the
+    generated advice, so the advice can be streamed separately. Resilient: a
+    downstream failure still returns the safety signal.
     """
-
-    logger.debug("Generating counselor guidance. User input: %s", user_input)
+    logger.debug("Analyzing message: %s", user_input)
 
     # Crisis-safety screen first — a cheap regex that must never be lost to a
-    # later (LLM/model) failure, so it is computed before any heavy work.
+    # later (model) failure, so it is computed before any heavy work.
     safety_protocol = _safety_checker.check_input(user_input)
     if safety_protocol:
         logger.warning(
@@ -40,8 +37,7 @@ def generate_counselor_guidance(
 
     # Seed with safe, format-friendly defaults so a downstream failure still
     # returns the safety signal and renders without errors.
-    guidance = {
-        "generated_advice": "I'm sorry, something went wrong.",
+    result = {
         "predicted_topic": None,
         "topic_confidence": 0.0,
         "sentiment": None,
@@ -50,6 +46,7 @@ def generate_counselor_guidance(
         "patient_profile": patient_profile or {},
         "safety_protocol": safety_protocol,
         "urgency": {"is_urgent": False, "label": None, "score": None},
+        "analysis_context": "",
     }
 
     # Best-effort emotional-urgency detection (heavy model; degrade gracefully).
@@ -57,7 +54,7 @@ def generate_counselor_guidance(
         is_urgent, urgency_label, urgency_score = detect_urgency(
             user_input, load_urgency_detector()
         )
-        guidance["urgency"] = {
+        result["urgency"] = {
             "is_urgent": is_urgent,
             "label": urgency_label,
             "score": urgency_score,
@@ -67,15 +64,14 @@ def generate_counselor_guidance(
 
     # A detected safety crisis is authoritative: always treat it as urgent, even
     # when the emotion model (which is not a crisis detector) did not flag it.
-    if safety_protocol and not guidance["urgency"]["is_urgent"]:
-        guidance["urgency"] = {
+    if safety_protocol and not result["urgency"]["is_urgent"]:
+        result["urgency"] = {
             "is_urgent": True,
-            "label": guidance["urgency"]["label"] or "crisis",
-            "score": guidance["urgency"]["score"] if guidance["urgency"]["score"] is not None else 1.0,
+            "label": result["urgency"]["label"] or "crisis",
+            "score": result["urgency"]["score"] if result["urgency"]["score"] is not None else 1.0,
         }
 
     try:
-        # Topic classification and sentiment analysis for the latest message
         classifier = load_topic_classifier()
         predicted_topic, topic_score = predict_topic(user_input, classifier)
         logger.debug("Predicted topic: %s with score: %s", predicted_topic, topic_score)
@@ -99,28 +95,52 @@ def generate_counselor_guidance(
         examples = semantic_search(user_input, top_k=3)
         logger.debug("Retrieved %d historical examples.", len(examples))
 
-        # Reuse the examples already retrieved above instead of letting
-        # generate_advice run a second semantic search per message.
-        advice_obj = generate_advice(analysis_context, examples=examples)
+        result.update({
+            "predicted_topic": predicted_topic,
+            "topic_confidence": topic_score,
+            "sentiment": sentiment,
+            "sentiment_score": sentiment_score,
+            "historical_examples": examples,
+            "analysis_context": analysis_context,
+        })
+    except Exception:
+        logger.exception("Message analysis failed; returning safety signal only.")
 
+    return result
+
+
+def generate_counselor_guidance(
+    user_input: str,
+    patient_profile: dict | None = None,
+    conversation_history: str = "",
+):
+    """Generate guidance for counselors based on the latest patient message.
+
+    Args:
+        user_input: Latest message from the patient.
+        patient_profile: Attributes describing the patient.
+        conversation_history: Prior conversation transcript.
+
+    Returns:
+        Dictionary with generated advice and analytics for the counselor.
+    """
+    logger.debug("Generating counselor guidance. User input: %s", user_input)
+
+    guidance = analyze_message(user_input, patient_profile, conversation_history)
+    guidance["generated_advice"] = "I'm sorry, something went wrong."
+
+    try:
+        advice_obj = generate_advice(
+            guidance["analysis_context"], examples=guidance["historical_examples"]
+        )
         if isinstance(advice_obj, list):
             advice_text = advice_obj[0].content if hasattr(advice_obj[0], "content") else str(advice_obj[0])
         elif hasattr(advice_obj, "content"):
             advice_text = advice_obj.content
         else:
             advice_text = str(advice_obj)
-
-        logger.debug("Generated advice: %s", advice_text)
-
-        guidance.update({
-            "generated_advice": advice_text,
-            "predicted_topic": predicted_topic,
-            "topic_confidence": topic_score,
-            "sentiment": sentiment,
-            "sentiment_score": sentiment_score,
-            "historical_examples": examples,
-        })
+        guidance["generated_advice"] = advice_text
     except Exception:
-        logger.exception("Counselor guidance generation failed; returning safety signal only.")
+        logger.exception("Advice generation failed.")
 
     return guidance
