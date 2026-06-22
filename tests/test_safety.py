@@ -43,6 +43,18 @@ def test_self_harm_gerund_forms_detected():
         assert r is not None and r["action"] == "CRITICAL" and r["flag_type"] == "violence_risk", text
 
 
+def test_highest_severity_wins_on_cooccurrence():
+    # When an URGENT (abuse) and a CRITICAL (suicide) flag co-occur in one
+    # message, the CRITICAL one must win — it must not be masked by whichever
+    # pattern is checked first.
+    result = SafetyChecker().check_input(
+        "there was abuse at home and now I want to kill myself"
+    )
+    assert result is not None
+    assert result["action"] == "CRITICAL"
+    assert result["flag_type"] == "suicide_risk"
+
+
 def test_benign_text_not_flagged():
     for text in [
         "I had a good day today",

@@ -13,7 +13,9 @@ def load_urgency_detector():
 def detect_urgency(text: str, detector=None, threshold=0.7):
     if detector is None:
         detector = load_urgency_detector()
-    predictions = detector(text)
+    # Truncate to roughly the model's max sequence length to avoid errors on
+    # long concatenated turns (mirrors analyze_sentiment).
+    predictions = detector(text[:512])
     logger.debug("Urgency detector predictions: %s", predictions)
     urgent_emotions = {"anger", "fear", "sadness"}
     for pred in predictions[0]:

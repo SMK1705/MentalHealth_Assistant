@@ -47,6 +47,9 @@ def analyze_message(
         "safety_protocol": safety_protocol,
         "urgency": {"is_urgent": False, "label": None, "score": None},
         "analysis_context": "",
+        # Names of pipeline stages that degraded, so callers/UI can say so
+        # instead of presenting a partial result as a clean one.
+        "errors": [],
     }
 
     # Best-effort emotional-urgency detection (heavy model; degrade gracefully).
@@ -61,6 +64,7 @@ def analyze_message(
         }
     except Exception:
         logger.exception("Urgency detection failed; defaulting to not urgent.")
+        result["errors"].append("urgency")
 
     # A detected safety crisis is authoritative: always treat it as urgent, even
     # when the emotion model (which is not a crisis detector) did not flag it.
@@ -71,6 +75,8 @@ def analyze_message(
             "score": result["urgency"]["score"] if result["urgency"]["score"] is not None else 1.0,
         }
 
+    # Local topic + sentiment models. Isolated from retrieval below so a failure
+    # in one does not discard the other's result.
     try:
         classifier = load_topic_classifier()
         predicted_topic, topic_score = predict_topic(user_input, classifier)
@@ -79,32 +85,39 @@ def analyze_message(
         sentiment, sentiment_score = analyze_sentiment(user_input)
         logger.debug("Sentiment score: %s (%s)", sentiment_score, sentiment)
 
-        # Prepare context for advice generation incorporating profile and analytics
-        profile_text = "".join(
-            f"{k}: {v}\n" for k, v in patient_profile.items()
-        ) if patient_profile else ""
-
-        analysis_context = (
-            f"Patient Profile:\n{profile_text}\n"
-            f"Conversation History:\n{conversation_history}\n"
-            f"Latest Message: {user_input}\n"
-            f"Predicted Topic: {predicted_topic} (Confidence: {topic_score})\n"
-            f"Sentiment: {sentiment} (Score: {sentiment_score})"
-        )
-
-        examples = semantic_search(user_input, top_k=3)
-        logger.debug("Retrieved %d historical examples.", len(examples))
-
         result.update({
             "predicted_topic": predicted_topic,
             "topic_confidence": topic_score,
             "sentiment": sentiment,
             "sentiment_score": sentiment_score,
-            "historical_examples": examples,
-            "analysis_context": analysis_context,
         })
     except Exception:
-        logger.exception("Message analysis failed; returning safety signal only.")
+        logger.exception("Topic/sentiment analysis failed.")
+        result["errors"].append("analysis")
+
+    # Always assemble the LLM context from whatever signals we have (using the
+    # seeded defaults when a stage degraded), so downstream generation never
+    # silently runs on an empty context.
+    profile_text = "".join(
+        f"{k}: {v}\n" for k, v in patient_profile.items()
+    ) if patient_profile else ""
+    result["analysis_context"] = (
+        f"Patient Profile:\n{profile_text}\n"
+        f"Conversation History:\n{conversation_history}\n"
+        f"Latest Message: {user_input}\n"
+        f"Predicted Topic: {result['predicted_topic']} (Confidence: {result['topic_confidence']})\n"
+        f"Sentiment: {result['sentiment']} (Score: {result['sentiment_score']})"
+    )
+
+    # Retrieval (Pinecone + Mongo) isolated in its own block: a RAG outage must
+    # not throw away the topic/sentiment/context computed above.
+    try:
+        examples = semantic_search(user_input, top_k=3)
+        logger.debug("Retrieved %d historical examples.", len(examples))
+        result["historical_examples"] = examples
+    except Exception:
+        logger.exception("Semantic retrieval failed; continuing without examples.")
+        result["errors"].append("retrieval")
 
     return result
 

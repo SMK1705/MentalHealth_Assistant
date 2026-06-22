@@ -33,14 +33,32 @@ class SafetyChecker:
             "action": "CRITICAL"
         }
     }
-    
+
+    # Higher rank wins when multiple red flags co-occur in one message.
+    _ACTION_SEVERITY = {"CRITICAL": 2, "URGENT": 1}
+
     def check_input(self, text: str):
+        """Return the protocol for the highest-severity red flag in ``text``.
+
+        All patterns are evaluated (not just the first match) so a CRITICAL
+        flag is never masked by a lower-severity one that happens to be checked
+        first. Negation is intentionally NOT handled: for a crisis screen,
+        over-triggering is the safe direction — the clinician can dismiss a
+        false positive, but a missed crisis is unacceptable.
+        """
         text = text.lower()
+        best = None
+        best_rank = -1
         for pattern, flag_type in self.RED_FLAGS.items():
-            if re.search(pattern, text):
-                logger.info("Safety check triggered: %s", flag_type)
-                protocol = self.PROTOCOLS.get(flag_type)
-                if protocol:
-                    return {**protocol, "flag_type": flag_type}
-                return None
-        return None
+            if not re.search(pattern, text):
+                continue
+            protocol = self.PROTOCOLS.get(flag_type)
+            if not protocol:
+                continue
+            rank = self._ACTION_SEVERITY.get(protocol["action"], 0)
+            if rank > best_rank:
+                best_rank = rank
+                best = {**protocol, "flag_type": flag_type}
+        if best:
+            logger.info("Safety check triggered: %s", best["flag_type"])
+        return best

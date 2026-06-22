@@ -93,7 +93,11 @@ def generate_session_suggestions(transcript, patient_summary, history_summary,
         return parse_suggestions(text)
     except Exception:
         logger.exception("Session suggestion generation failed.")
-        return dict(_EMPTY)
+        # Flag the failure so the UI can distinguish "the model errored" from
+        # "the model ran and had nothing high-value to add".
+        out = dict(_EMPTY)
+        out["_error"] = "generation_failed"
+        return out
 
 
 _CONF_LABEL = {
@@ -117,6 +121,16 @@ def render_suggestions(data, analysis):
         st.error(
             f"Safety — {sp.get('action')}: {sp.get('flag_type')}. {sp.get('response', '')}"
         )
+
+    # Surface a degraded run instead of silently showing an empty panel.
+    if data.get("_error"):
+        st.warning(
+            "The assistant could not generate suggestions for this turn (model "
+            "error). The deterministic safety check above still applies."
+        )
+    degraded = analysis.get("errors") or []
+    if degraded:
+        st.caption("⚠️ Limited analysis — unavailable: " + ", ".join(degraded))
 
     red = data.get("red_flags") or []
     if red:
@@ -155,7 +169,8 @@ def render_suggestions(data, analysis):
             st.code(data["_raw"])
 
     if not any(data.get(k) for k in ("red_flags", "missing_info", "emotional_state",
-                                     "next_questions", "follow_ups")) and not sp:
+                                     "next_questions", "follow_ups")) and not sp \
+            and not data.get("_error"):
         st.caption("No high-value suggestions for this turn.")
 
     st.caption("Decision support — not a diagnosis. Clinical judgment required.")

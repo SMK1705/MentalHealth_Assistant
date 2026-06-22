@@ -63,7 +63,9 @@ def analyze_sentiment(text: str):
         logger.exception("Sentiment model failed; using word-count fallback.")
         score = simple_sentiment_analysis(text)
         label = "Positive" if score > 0 else "Negative" if score < 0 else "Neutral"
-        return label, float(score)
+        # Clamp to the documented [-1.0, 1.0] contract (the heuristic returns an
+        # unbounded word-count difference).
+        return label, float(max(-1, min(1, score)))
 
 
 def train_patient_ml_model(patient_id: str):

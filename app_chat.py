@@ -1,4 +1,5 @@
 import asyncio
+import hmac
 import streamlit as st
 import logging
 import uuid
@@ -46,7 +47,8 @@ def check_authentication() -> bool:
     st.title("🔒 Sign in")
     password = st.text_input("Password", type="password", key="auth_password")
     if st.button("Sign in"):
-        if password == settings.app_password:
+        # Constant-time comparison to avoid leaking the password via timing.
+        if hmac.compare_digest(password, settings.app_password):
             st.session_state.authenticated = True
             st.rerun()
         else:
@@ -187,13 +189,20 @@ def _format_signals(analysis):
 
 
 def _persist_session():
-    """Archive the transcript + session log unless this is an in-memory demo."""
+    """Archive the transcript + session log unless this is an in-memory demo.
+
+    Persistence failures are recorded in session state (not silently dropped)
+    so the clinician is warned that the turn may not have been saved — this
+    runs right before ``st.rerun()``, so a warning shown here would be lost.
+    """
     if st.session_state.get("demo_mode"):
         return
+    failed = False
     try:
         archive_conversation(st.session_state.conversation_model)
     except Exception:
         logger.exception("Failed to archive conversation")
+        failed = True
     try:
         latest = st.session_state.get("latest_analysis") or {}
         archive_session(SessionLog(
@@ -207,6 +216,8 @@ def _persist_session():
         ))
     except Exception:
         logger.exception("Failed to archive session log")
+        failed = True
+    st.session_state["persist_error"] = failed
 
 
 def _run_assistant(patient_text):
@@ -236,6 +247,9 @@ def _run_assistant(patient_text):
                 f"Sentiment: {analysis.get('sentiment') or 'n/a'}"
             )
             st.write(f"Retrieved {len(analysis.get('historical_examples') or [])} similar case(s).")
+            degraded = analysis.get("errors") or []
+            if degraded:
+                st.write(f"⚠️ Degraded — unavailable: {', '.join(degraded)}")
             status.update(label="Generating decision support…")
             suggestions = generate_session_suggestions(
                 transcript=transcript,
@@ -245,9 +259,18 @@ def _run_assistant(patient_text):
                 examples=analysis.get("historical_examples"),
                 doctor_questions=doctor_questions,
             )
-            status.update(label="Decision support ready", state="complete", expanded=False)
+            if suggestions.get("_error"):
+                status.update(label="Decision support unavailable — model error",
+                              state="error", expanded=False)
+            elif degraded:
+                status.update(label="Decision support ready (degraded analysis)",
+                              state="complete", expanded=False)
+            else:
+                status.update(label="Decision support ready", state="complete", expanded=False)
     except Exception:
         logger.exception("Assistant generation error")
+        st.error("The assistant hit an unexpected error analyzing this turn. "
+                 "The deterministic safety check (shown above, if any) still applies.")
 
     st.session_state.latest_analysis = analysis
     st.session_state.latest_suggestions = suggestions
@@ -373,6 +396,12 @@ def chat_page():
     st.title("🩺 Live Session Assistant")
     st.caption("Decision support for the clinician — not a diagnosis. You stay in control.")
 
+    # Surface a persistence failure from the previous turn (set just before the
+    # rerun that brought us here, so it could not be shown inline).
+    if st.session_state.pop("persist_error", False):
+        st.warning("⚠️ The last turn may not have been saved to the database. "
+                   "Check the patient profile exists and the database is reachable.")
+
     ctrl_left, ctrl_right = st.columns([3, 1])
     if st.session_state.get("demo_mode"):
         ctrl_left.caption("Demo mode — sample patient, nothing is saved.")
@@ -438,20 +467,31 @@ def chat_page():
         if st.button("Generate report", key="exit_button"):
             with st.spinner("Generating the session report…"):
                 try:
-                    conversation_text = "\n".join(
-                        f"{m.get('speaker', 'patient').capitalize()}: {m['content']}"
-                        for m in st.session_state.conversation
-                    )
+                    # Classify over the patient's own turns (the doctor's
+                    # questions would skew topic/sentiment).
+                    patient_text = "\n".join(
+                        m["content"] for m in st.session_state.conversation
+                        if m.get("speaker") == "patient"
+                    ) or "\n".join(m["content"] for m in st.session_state.conversation)
                     classifier = load_topic_classifier()
-                    predicted_topic, topic_confidence = predict_topic(conversation_text, classifier)
-                    sentiment, sentiment_score = analyze_sentiment(conversation_text)
+                    predicted_topic, topic_confidence = predict_topic(patient_text, classifier)
+                    sentiment, sentiment_score = analyze_sentiment(patient_text)
+
+                    # Carry the safety signals accumulated DURING the session
+                    # into the report — a crisis flagged earlier must not vanish.
+                    risk_flags = st.session_state.get("session_risk_flags") or []
+                    topics = st.session_state.get("session_topics") or []
+                    notes = st.session_state.get("doctor_notes_input", "")
                     prompt = (
                         f"Patient Session Report:\n"
                         f"Topic: {predicted_topic} (Confidence: {topic_confidence:.2f})\n"
-                        f"Overall Sentiment: {sentiment} (Score: {sentiment_score})\n\n"
+                        f"Topics observed this session: {', '.join(topics) or 'n/a'}\n"
+                        f"Overall Sentiment: {sentiment} (Score: {sentiment_score})\n"
+                        f"Risk flags raised this session: {', '.join(risk_flags) or 'none'}\n"
+                        f"Clinician notes: {notes or '(none)'}\n\n"
                         "Provide a structured clinician-facing session summary with sections:\n"
                         "1. **Presentation & key themes**\n"
-                        "2. **Areas of concern / risk**\n"
+                        "2. **Areas of concern / risk** — explicitly address every risk flag listed above.\n"
                         "3. **Suggested follow-up** (for the clinician to consider; not prescriptive).\n"
                         "Use clear headings and bullet points. Do not diagnose or prescribe."
                     )
@@ -462,6 +502,8 @@ def chat_page():
                     st.subheader("📝 Session report")
                     st.markdown(f"**Predicted topic:** {predicted_topic} · **Confidence:** {topic_confidence:.2f}")
                     st.markdown(f"**Overall sentiment:** {sentiment} ({sentiment_score})")
+                    if risk_flags:
+                        st.error("**Risk flags raised this session:** " + ", ".join(risk_flags))
                     st.markdown(recommendations)
                 except Exception:
                     logger.exception("Error generating report")
