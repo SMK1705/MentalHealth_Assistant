@@ -1,5 +1,14 @@
 import patient_ml
-from patient_ml import simple_sentiment_analysis, analyze_sentiment
+from patient_ml import simple_sentiment_analysis, analyze_sentiment, _normalize_sentiment_label
+
+
+def test_normalize_sentiment_label():
+    assert _normalize_sentiment_label("positive") == "positive"
+    assert _normalize_sentiment_label("LABEL_2") == "positive"
+    assert _normalize_sentiment_label("negative") == "negative"
+    assert _normalize_sentiment_label("LABEL_0") == "negative"
+    assert _normalize_sentiment_label("neutral") == "neutral"
+    assert _normalize_sentiment_label("LABEL_1") == "neutral"
 
 
 def test_simple_sentiment_counts():

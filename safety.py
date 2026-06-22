@@ -11,7 +11,7 @@ class SafetyChecker:
         r"no reason to live|no point in living)\b": "suicide_risk",
         r"\b(abuse|abused|abusing|abuser|molest|molested|molesting|molester|"
         r"rape|raped|raping|rapist|sexual assault|sexually assaulted)\b": "abuse_disclosure",
-        r"\b((harm|hurt|kill|cut|cutting) "
+        r"\b((harm|harming|hurt|hurting|kill|killing|cut|cutting) "
         r"(myself|himself|herself|themselves|others|someone|him|her|them)|"
         r"self[- ]?harm)\b": "violence_risk",
     }

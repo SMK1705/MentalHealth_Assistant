@@ -34,6 +34,15 @@ def test_inflections_detected():
         assert SafetyChecker().check_input(text) is not None, text
 
 
+def test_self_harm_gerund_forms_detected():
+    # Regression (P1): inflected self-harm phrasing must flag a CRITICAL crisis.
+    # "harming myself" / "hurting myself" previously returned None.
+    checker = SafetyChecker()
+    for text in ["I've started thinking about harming myself", "I keep hurting myself"]:
+        r = checker.check_input(text)
+        assert r is not None and r["action"] == "CRITICAL" and r["flag_type"] == "violence_risk", text
+
+
 def test_benign_text_not_flagged():
     for text in [
         "I had a good day today",

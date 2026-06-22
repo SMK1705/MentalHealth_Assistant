@@ -1,4 +1,4 @@
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, unquote
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -19,8 +19,10 @@ class Settings(BaseSettings):
         match = re.match(r"(mongodb(?:\+srv)?://)(.*):(.*)@(.*)", self.mongo_uri)
         if match:
             prefix, user, pwd, rest = match.groups()
-            user_encoded = quote_plus(user)
-            pwd_encoded = quote_plus(pwd)
+            # Decode first, then re-encode, so an already-encoded password is
+            # not double-encoded (%40 -> %2540) and a raw one is encoded correctly.
+            user_encoded = quote_plus(unquote(user))
+            pwd_encoded = quote_plus(unquote(pwd))
             return f"{prefix}{user_encoded}:{pwd_encoded}@{rest}"
         return self.mongo_uri
 
