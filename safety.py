@@ -13,12 +13,18 @@ class SafetyChecker:
     PROTOCOLS = {
         "suicide_risk": {
             "response": "I'm really sorry you're feeling this way. "
-                        "Please contact the National Suicide Prevention Lifeline at 1-800-273-8255.",
+                        "Please contact the 988 Suicide & Crisis Lifeline by calling or texting 988.",
             "action": "CRITICAL"
         },
         "abuse_disclosure": {
             "response": "Thank you for sharing this. Let's connect you with a specialist who can help.",
             "action": "URGENT"
+        },
+        "violence_risk": {
+            "response": "Safety is the immediate priority. If anyone is in danger right now, "
+                        "contact emergency services (911). You can also reach the 988 Suicide & "
+                        "Crisis Lifeline by calling or texting 988.",
+            "action": "CRITICAL"
         }
     }
     

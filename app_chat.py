@@ -10,6 +10,7 @@ from topic_classifier import predict_topic, load_topic_classifier
 from patient_ml import simple_sentiment_analysis
 from llm_rag import generate_advice
 from patient_profile import get_patient_profile, create_patient_profile
+from safety import SafetyChecker
 
 # Ensure an event loop is available
 try:
@@ -21,6 +22,9 @@ except RuntimeError:
 # Logging setup
 setup_logging()
 logger = logging.getLogger(__name__)
+
+# Stateless crisis screener for the guaranteed UI fallback (see chat_page).
+_safety_checker = SafetyChecker()
 
 # Page configuration
 st.set_page_config(
@@ -109,6 +113,26 @@ def chat_page():
                         f"Sentiment: {analysis.get('sentiment')} ({analysis.get('sentiment_score')})"
                     )
 
+                    safety_protocol = analysis.get("safety_protocol")
+                    if safety_protocol:
+                        action = safety_protocol.get("action", "URGENT")
+                        banner = (
+                            f"⚠️ Crisis indicator detected ({action}). "
+                            f"Suggested protocol: {safety_protocol.get('response', '')}"
+                        )
+                        if action == "CRITICAL":
+                            st.error(banner)
+                        else:
+                            st.warning(banner)
+
+                    urgency = analysis.get("urgency")
+                    if urgency and urgency.get("is_urgent"):
+                        score = urgency.get("score")
+                        score_text = f" ({score:.2f})" if isinstance(score, (int, float)) else ""
+                        st.warning(
+                            f"Elevated emotional urgency: {urgency.get('label')}{score_text}"
+                        )
+
     # Chat input with spinner for each conversation message generation
     user_message = st.chat_input("Type your message here...")
     if user_message:
@@ -134,11 +158,15 @@ def chat_page():
                     "topic_confidence": guidance.get("topic_confidence"),
                     "sentiment": guidance.get("sentiment"),
                     "sentiment_score": guidance.get("sentiment_score"),
+                    "safety_protocol": guidance.get("safety_protocol"),
+                    "urgency": guidance.get("urgency"),
                 }
             except Exception as e:
                 logger.exception("Guidance generation error")
                 assistant_reply = "I'm sorry, something went wrong."
-                analytics = {}
+                # Even on total failure, never drop the crisis screen for the
+                # latest patient message — re-run the cheap regex directly.
+                analytics = {"safety_protocol": _safety_checker.check_input(user_message)}
 
         # Append assistant's reply along with analytics
         st.session_state.conversation.append({
