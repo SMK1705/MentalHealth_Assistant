@@ -3,8 +3,9 @@ from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-# Below this model confidence a binary prediction is treated as Neutral.
-NEUTRAL_THRESHOLD = 0.65
+# 3-class sentiment model with an explicit Neutral class — replaces binary
+# SST-2, which over-confidently mislabeled neutral/ambiguous text.
+SENTIMENT_MODEL = "cardiffnlp/twitter-roberta-base-sentiment-latest"
 
 
 def simple_sentiment_analysis(text):
@@ -20,11 +21,21 @@ def simple_sentiment_analysis(text):
 
 @lru_cache(maxsize=1)
 def load_sentiment_model():
-    """Return a cached transformers sentiment-analysis pipeline."""
+    """Return a cached 3-class transformers sentiment pipeline."""
     from transformers import pipeline
-    model = pipeline("sentiment-analysis")
-    logger.debug("Sentiment model loaded.")
+    model = pipeline("sentiment-analysis", model=SENTIMENT_MODEL)
+    logger.debug("Sentiment model loaded: %s", SENTIMENT_MODEL)
     return model
+
+
+def _normalize_sentiment_label(raw: str) -> str:
+    """Map model label variants (positive/negative/neutral or LABEL_0/1/2)."""
+    r = raw.lower()
+    if "pos" in r or r == "label_2":
+        return "positive"
+    if "neg" in r or r == "label_0":
+        return "negative"
+    return "neutral"
 
 
 def analyze_sentiment(text: str):
@@ -32,8 +43,8 @@ def analyze_sentiment(text: str):
 
     Returns a ``(label, score)`` tuple where label is one of
     ``"Positive"``/``"Negative"``/``"Neutral"`` and score is a signed
-    confidence in ``[-1.0, 1.0]``. Falls back to the word-count heuristic if
-    the transformer model cannot be loaded or run.
+    confidence in ``[-1.0, 1.0]`` (0.0 for Neutral). Falls back to the
+    word-count heuristic if the transformer model cannot be loaded or run.
     """
     if not text or not text.strip():
         return "Neutral", 0.0
@@ -41,12 +52,13 @@ def analyze_sentiment(text: str):
         classifier = load_sentiment_model()
         # Truncate to roughly the model's max sequence length to avoid errors.
         result = classifier(text[:512])[0]
+        label = _normalize_sentiment_label(result["label"])
         confidence = float(result["score"])
-        is_positive = "POS" in result["label"].upper()
-        signed = confidence if is_positive else -confidence
-        if confidence < NEUTRAL_THRESHOLD:
-            return "Neutral", signed
-        return ("Positive" if is_positive else "Negative"), signed
+        if label == "positive":
+            return "Positive", confidence
+        if label == "negative":
+            return "Negative", -confidence
+        return "Neutral", 0.0
     except Exception:
         logger.exception("Sentiment model failed; using word-count fallback.")
         score = simple_sentiment_analysis(text)
