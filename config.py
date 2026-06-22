@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     pinecone_api_key: str
     pinecone_index_name: str
     pinecone_environment: str
+    app_password: str = ""  # optional shared password gating the Streamlit app
 
     class Config:
         env_file = ".env"
