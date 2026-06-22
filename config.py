@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     @property
     def safe_mongo_uri(self):
         import re
-        match = re.match(r"(mongodb://)(.*):(.*)@(.*)", self.mongo_uri)
+        match = re.match(r"(mongodb(?:\+srv)?://)(.*):(.*)@(.*)", self.mongo_uri)
         if match:
             prefix, user, pwd, rest = match.groups()
             user_encoded = quote_plus(user)
