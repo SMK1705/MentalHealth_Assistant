@@ -12,6 +12,7 @@ from llm_rag import generate_advice
 from patient_profile import get_patient_profile, create_patient_profile, update_patient_fields
 from safety import SafetyChecker
 from config import settings
+from dashboard import render_dashboard
 
 # Ensure an event loop is available
 try:
@@ -161,57 +162,51 @@ def landing_page():
 def chat_page():
     st.title("🧠 Mental Health Counselor Guidance")
 
-    # Show the loaded patient profile so the personalization context is visible.
-    profile = st.session_state.get("patient_profile") or {}
-    medical_history = profile.get("medical_history") or []
-    therapy_goals = profile.get("therapy_goals") or []
-    if medical_history or therapy_goals:
-        with st.expander("Patient profile", expanded=False):
-            if medical_history:
-                st.markdown("**Medical history**")
-                for item in medical_history:
-                    st.markdown(f"- {item}")
-            if therapy_goals:
-                st.markdown("**Therapy goals**")
-                for item in therapy_goals:
-                    st.markdown(f"- {item}")
+    col_chat, col_dash = st.columns([1.4, 1], gap="large")
 
-    # Display messages freshly each time using Streamlit's native chat components
-    for msg in st.session_state.conversation:
-        if msg["role"] == "user":
-            with st.chat_message("user"):
-                st.write(msg["content"])
-        else:
-            with st.chat_message("assistant"):
-                st.write(msg["content"])
-                analysis = msg.get("analysis")
-                if analysis:
-                    st.caption(
-                        f"Topic: {analysis.get('topic')} (Confidence: {analysis.get('topic_confidence', 0.0):.2f}) | "
-                        f"Sentiment: {analysis.get('sentiment')} ({analysis.get('sentiment_score')})"
-                    )
-
-                    safety_protocol = analysis.get("safety_protocol")
-                    if safety_protocol:
-                        action = safety_protocol.get("action", "URGENT")
-                        banner = (
-                            f"⚠️ Crisis indicator detected ({action}). "
-                            f"Suggested protocol: {safety_protocol.get('response', '')}"
+    with col_chat:
+        # Display messages freshly each time using Streamlit's native chat components
+        for msg in st.session_state.conversation:
+            if msg["role"] == "user":
+                with st.chat_message("user"):
+                    st.write(msg["content"])
+            else:
+                with st.chat_message("assistant"):
+                    st.write(msg["content"])
+                    analysis = msg.get("analysis")
+                    if analysis:
+                        st.caption(
+                            f"Topic: {analysis.get('topic')} (Confidence: {analysis.get('topic_confidence', 0.0):.2f}) | "
+                            f"Sentiment: {analysis.get('sentiment')} ({analysis.get('sentiment_score')})"
                         )
-                        if action == "CRITICAL":
-                            st.error(banner)
-                        else:
-                            st.warning(banner)
 
-                    # Only show the urgency banner when there is no crisis banner
-                    # already (the crisis banner takes priority and conveys urgency).
-                    urgency = analysis.get("urgency")
-                    if urgency and urgency.get("is_urgent") and not safety_protocol:
-                        score = urgency.get("score")
-                        score_text = f" ({score:.2f})" if isinstance(score, (int, float)) else ""
-                        st.warning(
-                            f"Elevated emotional urgency: {urgency.get('label')}{score_text}"
-                        )
+                        safety_protocol = analysis.get("safety_protocol")
+                        if safety_protocol:
+                            action = safety_protocol.get("action", "URGENT")
+                            banner = (
+                                f"⚠️ Crisis indicator detected ({action}). "
+                                f"Suggested protocol: {safety_protocol.get('response', '')}"
+                            )
+                            if action == "CRITICAL":
+                                st.error(banner)
+                            else:
+                                st.warning(banner)
+
+                        # Only show the urgency banner when there is no crisis banner
+                        # already (the crisis banner takes priority and conveys urgency).
+                        urgency = analysis.get("urgency")
+                        if urgency and urgency.get("is_urgent") and not safety_protocol:
+                            score = urgency.get("score")
+                            score_text = f" ({score:.2f})" if isinstance(score, (int, float)) else ""
+                            st.warning(
+                                f"Elevated emotional urgency: {urgency.get('label')}{score_text}"
+                            )
+
+    with col_dash:
+        render_dashboard(
+            st.session_state.conversation,
+            st.session_state.get("patient_profile") or {},
+        )
 
     # Chat input with spinner for each conversation message generation
     user_message = st.chat_input("Type your message here...")
