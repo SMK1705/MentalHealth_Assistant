@@ -1,8 +1,10 @@
 import logging
+from functools import lru_cache
 from transformers import pipeline
 
 logger = logging.getLogger(__name__)
 
+@lru_cache(maxsize=1)
 def load_urgency_detector():
     detector = pipeline("text-classification", model="j-hartmann/emotion-english-distilroberta-base", return_all_scores=True)
     logger.debug("Urgency detector loaded.")
