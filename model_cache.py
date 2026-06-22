@@ -16,3 +16,11 @@ def get_chat_groq():
         model_name="llama-3.3-70b-versatile",
         groq_api_key=settings.groq_api_key,
     )
+
+
+@lru_cache(maxsize=1)
+def get_pinecone_index():
+    """Return a cached Pinecone index handle (reused across messages)."""
+    from pinecone import Pinecone
+    pc = Pinecone(api_key=settings.pinecone_api_key)
+    return pc.Index(settings.pinecone_index_name)

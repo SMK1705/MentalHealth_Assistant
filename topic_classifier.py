@@ -1,4 +1,5 @@
 import logging
+from functools import lru_cache
 from transformers import pipeline
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ CANDIDATE_LABELS = [
     "workplace-relationships"
 ]
 
+@lru_cache(maxsize=1)
 def load_topic_classifier():
     classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
     logger.debug("Topic classifier loaded.")
