@@ -4,8 +4,8 @@ import logging
 import uuid
 from logging_config import setup_logging
 from unified_guidance import generate_counselor_guidance
-from archiver import archive_conversation
-from schemas import Conversation, Message
+from archiver import archive_conversation, archive_session
+from schemas import Conversation, Message, SessionLog
 from topic_classifier import predict_topic, load_topic_classifier
 from patient_ml import simple_sentiment_analysis
 from llm_rag import generate_advice
@@ -54,6 +54,10 @@ if "conversation_model" not in st.session_state:
     )
 if "patient_profile" not in st.session_state:
     st.session_state.patient_profile = {}
+if "session_risk_flags" not in st.session_state:
+    st.session_state.session_risk_flags = []
+if "session_topics" not in st.session_state:
+    st.session_state.session_topics = []
 
 # Landing Page
 def landing_page():
@@ -180,6 +184,28 @@ def chat_page():
 
         # Archive conversation
         archive_conversation(st.session_state.conversation_model)
+
+        # Roll up session-level analytics (distinct risk flags + topics) and
+        # persist a SessionLog so crisis events are captured even if the
+        # counselor never generates a report. Best-effort: never break chat.
+        protocol = analytics.get("safety_protocol")
+        flag_type = protocol.get("flag_type") if protocol else None
+        if flag_type and flag_type not in st.session_state.session_risk_flags:
+            st.session_state.session_risk_flags.append(flag_type)
+        topic = analytics.get("topic")
+        if topic and topic not in st.session_state.session_topics:
+            st.session_state.session_topics.append(topic)
+
+        try:
+            archive_session(SessionLog(
+                session_id=st.session_state.conversation_model.session_id,
+                patient_id=st.session_state.conversation_model.patient_id,
+                detected_topics=st.session_state.session_topics,
+                risk_flags=st.session_state.session_risk_flags,
+                sentiment_score=float(analytics.get("sentiment_score") or 0.0),
+            ))
+        except Exception:
+            logger.exception("Failed to archive session log")
 
         # Refresh display to show new message
         st.rerun()
