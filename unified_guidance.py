@@ -65,6 +65,15 @@ def generate_counselor_guidance(
     except Exception:
         logger.exception("Urgency detection failed; defaulting to not urgent.")
 
+    # A detected safety crisis is authoritative: always treat it as urgent, even
+    # when the emotion model (which is not a crisis detector) did not flag it.
+    if safety_protocol and not guidance["urgency"]["is_urgent"]:
+        guidance["urgency"] = {
+            "is_urgent": True,
+            "label": guidance["urgency"]["label"] or "crisis",
+            "score": guidance["urgency"]["score"] if guidance["urgency"]["score"] is not None else 1.0,
+        }
+
     try:
         # Topic classification and sentiment analysis for the latest message
         classifier = load_topic_classifier()

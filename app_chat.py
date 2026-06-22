@@ -203,8 +203,10 @@ def chat_page():
                         else:
                             st.warning(banner)
 
+                    # Only show the urgency banner when there is no crisis banner
+                    # already (the crisis banner takes priority and conveys urgency).
                     urgency = analysis.get("urgency")
-                    if urgency and urgency.get("is_urgent"):
+                    if urgency and urgency.get("is_urgent") and not safety_protocol:
                         score = urgency.get("score")
                         score_text = f" ({score:.2f})" if isinstance(score, (int, float)) else ""
                         st.warning(
