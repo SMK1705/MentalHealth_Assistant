@@ -6,10 +6,11 @@ from prompt_templates import ADVICE_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
-def generate_advice(query: str):
+def generate_advice(query: str, examples=None):
     logger.debug("Generating advice for query: %s", query)
-    examples = semantic_search(query, top_k=3)
-    
+    if examples is None:
+        examples = semantic_search(query, top_k=3)
+
     examples_text = ""
     for ex in examples:
         examples_text += f"Patient: {ex.get('questionText', '')}\nTherapist: {ex.get('answerText', '')}\n\n"

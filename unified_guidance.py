@@ -93,7 +93,9 @@ def generate_counselor_guidance(
         examples = semantic_search(user_input, top_k=3)
         logger.debug("Retrieved %d historical examples.", len(examples))
 
-        advice_obj = generate_advice(analysis_context)
+        # Reuse the examples already retrieved above instead of letting
+        # generate_advice run a second semantic search per message.
+        advice_obj = generate_advice(analysis_context, examples=examples)
 
         if isinstance(advice_obj, list):
             advice_text = advice_obj[0].content if hasattr(advice_obj[0], "content") else str(advice_obj[0])
