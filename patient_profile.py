@@ -62,6 +62,20 @@ def create_patient_profile(patient_id: str, medical_history=None, therapy_goals=
     collection.insert_one(profile_data)
     return PatientProfile(**profile_data)
 
+
+def update_patient_fields(patient_id: str, medical_history=None, therapy_goals=None) -> PatientProfile | None:
+    """Set medical_history / therapy_goals on an existing patient and return the
+    refreshed profile."""
+    db = get_db()
+    updates = {}
+    if medical_history is not None:
+        updates["medical_history"] = medical_history
+    if therapy_goals is not None:
+        updates["therapy_goals"] = therapy_goals
+    if updates:
+        db["patients"].update_one({"patient_id": patient_id}, {"$set": updates})
+    return get_patient_profile(patient_id)
+
 def update_patient_profile(patient_id: str):
     conv = get_patient_conversation(patient_id)
     profile = get_patient_profile(patient_id)
