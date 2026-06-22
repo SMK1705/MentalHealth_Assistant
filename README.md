@@ -34,6 +34,7 @@ MentalHealthChatbot/
 ├── Dockerfile              # For container deployments (optional)
 ├── requirements.txt        # Dependencies (Streamlit, pymongo, torch, etc.)
 ├── config.py               # Application configuration
+├── db.py                   # Shared, cached MongoDB client
 ├── logging_config.py       # Centralized logging setup
 ├── schemas.py              # Pydantic models for data validation
 ├── patient_profile.py      # Manages patient profiles
@@ -61,8 +62,8 @@ MentalHealthChatbot/
 
 - Python 3.10 or later
 - MongoDB instance (local or hosted)
-- Pinecone API key and index configuration (if using Pinecone)
-- API keys for external LLM services (e.g., OpenAI, HuggingFace)
+- Pinecone API key and index configuration
+- A Groq API key for LLM inference (embeddings run locally via HuggingFace sentence-transformers, so no embedding API key is required)
 
 ### Installation Steps
 
@@ -88,7 +89,16 @@ MentalHealthChatbot/
 
 4. **Configure Environment Variables:**
 
-    Create a `.env` file in the project root with required variables (e.g., `MONGO_URI`, `PINECONE_API_KEY`, etc.).
+    Create a `.env` file in the project root with the following variables:
+
+    ```env
+    GROQ_API_KEY=your_groq_api_key
+    MONGO_URI=your_mongodb_uri          # mongodb:// or mongodb+srv:// (Atlas)
+    PINECONE_API_KEY=your_pinecone_api_key
+    PINECONE_INDEX_NAME=your_index_name
+    PINECONE_ENVIRONMENT=your_pinecone_region
+    APP_PASSWORD=optional_shared_password   # if set, gates the app behind a login
+    ```
 
 5. **Optional – Configure Streamlit File Watcher:**
 
@@ -121,9 +131,18 @@ This opens the chatbot interface in your browser at `http://localhost:8501`. Int
 - Sentiment analysis and scores  
 - Actionable recommendations for patient challenges  
 
-### Testing Backend Components
+### Running Tests
 
-Test individual modules (e.g., semantic search, ML model) by running their respective scripts or using unit tests if available.
+Unit tests live in `tests/` and run without any external services (no MongoDB, Pinecone, or model downloads required):
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+### Authentication
+
+If `APP_PASSWORD` is set in the environment, the Streamlit app shows a login prompt and requires that password before use. If it is unset, the app runs without authentication (a warning is logged at startup).
 
 ## Deployment
 
@@ -145,7 +164,8 @@ For containerized deployment, use the provided Dockerfile to build a Docker imag
 - **Streamlit:** For building the interactive chatbot UI.
 - **Pymongo:** For interfacing with MongoDB.
 - **Torch:** Used with HuggingFace models for embeddings and NLP tasks.
-- **LangChain and Transformers:** For LLM-based guidance and classification tasks.
+- **LangChain with Groq (`langchain-groq`):** For LLM-based guidance generation (Groq-hosted Llama models).
+- **Transformers:** For zero-shot topic classification, sentiment analysis, and urgency/emotion detection.
 - **Pydantic:** For data validation and modeling.
 - Additional libraries: See `requirements.txt` for the complete list.
 
