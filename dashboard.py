@@ -2,8 +2,8 @@ import streamlit as st
 
 
 def _assistant_analyses(conversation):
-    """Per-message analytics dicts from the assistant turns of the conversation."""
-    return [m.get("analysis") or {} for m in (conversation or []) if m.get("role") == "assistant"]
+    """Per-message analytics dicts from any analyzed turn of the conversation."""
+    return [m["analysis"] for m in (conversation or []) if m.get("analysis")]
 
 
 def render_dashboard(conversation, patient_profile):

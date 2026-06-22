@@ -16,6 +16,18 @@ def get_patient_conversation(patient_id: str):
     return conv
 
 
+def get_patient_sessions(patient_id: str):
+    """Return the patient's past session logs (raw dicts), most recent first."""
+    cursor = get_db()["sessions"].find({"patient_id": patient_id}).sort("created_at", -1)
+    return list(cursor)
+
+
+def get_patient_conversations(patient_id: str):
+    """Return the patient's archived conversations (raw dicts), most recent first."""
+    cursor = get_db()["PatientConvo"].find({"patient_id": patient_id}).sort("created_at", -1)
+    return list(cursor)
+
+
 def get_patient_profile(patient_id: str) -> PatientProfile | None:
     db = get_db()
     collection = db["patients"]
