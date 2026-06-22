@@ -7,9 +7,9 @@ from unified_guidance import generate_counselor_guidance
 from archiver import archive_conversation, archive_session
 from schemas import Conversation, Message, SessionLog
 from topic_classifier import predict_topic, load_topic_classifier
-from patient_ml import simple_sentiment_analysis
+from patient_ml import analyze_sentiment
 from llm_rag import generate_advice
-from patient_profile import get_patient_profile, create_patient_profile
+from patient_profile import get_patient_profile, create_patient_profile, update_patient_fields
 from safety import SafetyChecker
 
 # Ensure an event loop is available
@@ -59,6 +59,10 @@ if "session_risk_flags" not in st.session_state:
 if "session_topics" not in st.session_state:
     st.session_state.session_topics = []
 
+def _parse_lines(text):
+    """Split a textarea value into a clean list of non-empty, stripped lines."""
+    return [line.strip() for line in (text or "").splitlines() if line.strip()]
+
 # Landing Page
 def landing_page():
     st.markdown("""
@@ -83,15 +87,43 @@ def landing_page():
         """, unsafe_allow_html=True)
 
     patient_id = st.text_input("Patient ID", key="patient_id_input")
+    medical_history_input = st.text_area(
+        "Medical history (optional, one item per line)", key="medical_history_input"
+    )
+    therapy_goals_input = st.text_area(
+        "Therapy goals (optional, one item per line)", key="therapy_goals_input"
+    )
 
     if st.button("Get Started"):
-        if not patient_id.strip():
+        patient_id = patient_id.strip()
+        if not patient_id:
             st.error("Please enter a patient ID before starting.")
             return
 
-        profile = get_patient_profile(patient_id)
-        if profile is None:
-            profile = create_patient_profile(patient_id)
+        medical_history = _parse_lines(medical_history_input)
+        therapy_goals = _parse_lines(therapy_goals_input)
+
+        try:
+            profile = get_patient_profile(patient_id)
+            if profile is None:
+                profile = create_patient_profile(
+                    patient_id,
+                    medical_history=medical_history,
+                    therapy_goals=therapy_goals,
+                )
+            elif (medical_history and not profile.medical_history) or (
+                therapy_goals and not profile.therapy_goals
+            ):
+                # Enrich a previously-empty profile with the entered details.
+                profile = update_patient_fields(
+                    patient_id,
+                    medical_history=medical_history or profile.medical_history,
+                    therapy_goals=therapy_goals or profile.therapy_goals,
+                )
+        except Exception:
+            logger.exception("Failed to load or create patient profile")
+            st.error("Could not load the patient profile. Please try again later.")
+            return
 
         st.session_state.patient_profile = profile.dict()
         st.session_state.conversation_model.patient_id = patient_id
@@ -101,6 +133,21 @@ def landing_page():
 # Chat Page
 def chat_page():
     st.title("🧠 Mental Health Counselor Guidance")
+
+    # Show the loaded patient profile so the personalization context is visible.
+    profile = st.session_state.get("patient_profile") or {}
+    medical_history = profile.get("medical_history") or []
+    therapy_goals = profile.get("therapy_goals") or []
+    if medical_history or therapy_goals:
+        with st.expander("Patient profile", expanded=False):
+            if medical_history:
+                st.markdown("**Medical history**")
+                for item in medical_history:
+                    st.markdown(f"- {item}")
+            if therapy_goals:
+                st.markdown("**Therapy goals**")
+                for item in therapy_goals:
+                    st.markdown(f"- {item}")
 
     # Display messages freshly each time using Streamlit's native chat components
     for msg in st.session_state.conversation:
@@ -223,8 +270,7 @@ def chat_page():
                 predicted_topic, topic_confidence = predict_topic(conversation_text, classifier)
                 
                 # Evaluate overall sentiment
-                sentiment_score = simple_sentiment_analysis(conversation_text)
-                sentiment = "Positive" if sentiment_score > 0 else "Negative" if sentiment_score < 0 else "Neutral"
+                sentiment, sentiment_score = analyze_sentiment(conversation_text)
                 
                 # Prepare a structured prompt for generating actionable recommendations
                 prompt = (

@@ -1,8 +1,8 @@
-import pymongo
 import logging
 from config import settings
 from pinecone import Pinecone
 from model_cache import get_embedding_model
+from db import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +31,7 @@ def semantic_search(query: str, top_k: int = 5):
          question_ids.append(qid)
     logger.debug("Extracted question IDs: %s", question_ids)
 
-    client = pymongo.MongoClient(settings.safe_mongo_uri)
-    db = client.get_database("MentalHealthDB")
+    db = get_db()
     collection = db["PatientConvo"]
     results = []
     for qid in question_ids:

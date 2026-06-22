@@ -1,7 +1,7 @@
 import logging
 from semantic_search import semantic_search
 from topic_classifier import predict_topic, load_topic_classifier
-from patient_ml import simple_sentiment_analysis
+from patient_ml import analyze_sentiment
 from llm_rag import generate_advice
 from safety import SafetyChecker
 from urgency_detector import load_urgency_detector, detect_urgency
@@ -71,10 +71,7 @@ def generate_counselor_guidance(
         predicted_topic, topic_score = predict_topic(user_input, classifier)
         logger.debug("Predicted topic: %s with score: %s", predicted_topic, topic_score)
 
-        sentiment_score = simple_sentiment_analysis(user_input)
-        sentiment = (
-            "Positive" if sentiment_score > 0 else "Negative" if sentiment_score < 0 else "Neutral"
-        )
+        sentiment, sentiment_score = analyze_sentiment(user_input)
         logger.debug("Sentiment score: %s (%s)", sentiment_score, sentiment)
 
         # Prepare context for advice generation incorporating profile and analytics
@@ -93,7 +90,9 @@ def generate_counselor_guidance(
         examples = semantic_search(user_input, top_k=3)
         logger.debug("Retrieved %d historical examples.", len(examples))
 
-        advice_obj = generate_advice(analysis_context)
+        # Reuse the examples already retrieved above instead of letting
+        # generate_advice run a second semantic search per message.
+        advice_obj = generate_advice(analysis_context, examples=examples)
 
         if isinstance(advice_obj, list):
             advice_text = advice_obj[0].content if hasattr(advice_obj[0], "content") else str(advice_obj[0])

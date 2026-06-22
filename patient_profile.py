@@ -1,8 +1,8 @@
 import time
 import json
-import pymongo
 import logging
 from config import settings
+from db import get_db
 from pinecone import Pinecone, ServerlessSpec
 from model_cache import get_embedding_model
 from schemas import PatientProfile
@@ -10,16 +10,14 @@ from schemas import PatientProfile
 logger = logging.getLogger(__name__)
 
 def get_patient_conversation(patient_id: str):
-    client = pymongo.MongoClient(settings.safe_mongo_uri)
-    db = client.get_database("MentalHealthDB")
+    db = get_db()
     collection = db['PatientConvo']
     conv = collection.find_one({"patient_id": patient_id})
     return conv
 
 
 def get_patient_profile(patient_id: str) -> PatientProfile | None:
-    client = pymongo.MongoClient(settings.safe_mongo_uri)
-    db = client.get_database("MentalHealthDB")
+    db = get_db()
     collection = db["patients"]
     data = collection.find_one({"patient_id": patient_id})
     if not data:
@@ -54,8 +52,7 @@ def get_patient_profile(patient_id: str) -> PatientProfile | None:
 
 
 def create_patient_profile(patient_id: str, medical_history=None, therapy_goals=None) -> PatientProfile:
-    client = pymongo.MongoClient(settings.safe_mongo_uri)
-    db = client.get_database("MentalHealthDB")
+    db = get_db()
     collection = db["patients"]
     profile_data = {
         "patient_id": patient_id,
@@ -64,6 +61,20 @@ def create_patient_profile(patient_id: str, medical_history=None, therapy_goals=
     }
     collection.insert_one(profile_data)
     return PatientProfile(**profile_data)
+
+
+def update_patient_fields(patient_id: str, medical_history=None, therapy_goals=None) -> PatientProfile | None:
+    """Set medical_history / therapy_goals on an existing patient and return the
+    refreshed profile."""
+    db = get_db()
+    updates = {}
+    if medical_history is not None:
+        updates["medical_history"] = medical_history
+    if therapy_goals is not None:
+        updates["therapy_goals"] = therapy_goals
+    if updates:
+        db["patients"].update_one({"patient_id": patient_id}, {"$set": updates})
+    return get_patient_profile(patient_id)
 
 def update_patient_profile(patient_id: str):
     conv = get_patient_conversation(patient_id)
