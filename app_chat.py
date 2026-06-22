@@ -11,6 +11,7 @@ from patient_ml import analyze_sentiment
 from llm_rag import generate_advice
 from patient_profile import get_patient_profile, create_patient_profile, update_patient_fields
 from safety import SafetyChecker
+from config import settings
 
 # Ensure an event loop is available
 try:
@@ -25,6 +26,32 @@ logger = logging.getLogger(__name__)
 
 # Stateless crisis screener for the guaranteed UI fallback (see chat_page).
 _safety_checker = SafetyChecker()
+
+if not settings.app_password:
+    logger.warning("APP_PASSWORD is not set — the app is running without authentication.")
+
+
+def check_authentication() -> bool:
+    """Gate the app behind a shared password when settings.app_password is set.
+
+    Returns True when access is allowed. When no password is configured access
+    is allowed (a warning is logged at startup); otherwise the user must enter
+    the matching password once per session.
+    """
+    if not settings.app_password:
+        return True
+    if st.session_state.get("authenticated"):
+        return True
+
+    st.title("🔒 Sign in")
+    password = st.text_input("Password", type="password", key="auth_password")
+    if st.button("Sign in"):
+        if password == settings.app_password:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Incorrect password.")
+    return False
 
 # Page configuration
 st.set_page_config(
@@ -302,6 +329,9 @@ def chat_page():
                 st.error("An error occurred while generating the patient report. Please try again later.")
 
 # Main Navigation
+if not check_authentication():
+    st.stop()
+
 if st.session_state.page == "landing":
     landing_page()
 elif st.session_state.page == "chat":
