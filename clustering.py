@@ -4,6 +4,7 @@ import logging
 from sklearn.cluster import KMeans
 from langchain_huggingface import HuggingFaceEmbeddings
 from config import settings
+from db import CORPUS_COLLECTION
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +12,7 @@ def cluster_patient_problems(n_clusters=5):
     logger.info("Clustering patient problems into %d clusters", n_clusters)
     client = pymongo.MongoClient(settings.safe_mongo_uri)
     db = client.get_database("MentalHealthDB")
-    collection = db["PatientConvo"]
+    collection = db[CORPUS_COLLECTION]
     data = list(collection.find({}))
     logger.info("Loaded %d documents for clustering", len(data))
     df = pd.DataFrame(data)

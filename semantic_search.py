@@ -1,6 +1,6 @@
 import logging
 from model_cache import get_embedding_model, get_pinecone_index
-from db import get_db
+from db import get_db, CORPUS_COLLECTION
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def semantic_search(query: str, top_k: int = 5):
         variants.append(qid)
         if isinstance(qid, int):
             variants.append(float(qid))
-    collection = get_db()["PatientConvo"]
+    collection = get_db()[CORPUS_COLLECTION]
     docs = {_to_qid(d.get("questionID")): d for d in collection.find({"questionID": {"$in": variants}})}
     results = [docs[qid] for qid in question_ids if qid in docs]
     logger.debug("Semantic search found %d documents", len(results))

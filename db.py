@@ -3,6 +3,8 @@ import pymongo
 from config import settings
 
 DB_NAME = "MentalHealthDB"
+# RAG knowledge corpus, kept separate from the PatientConvo conversation archive.
+CORPUS_COLLECTION = "corpus"
 
 
 @lru_cache(maxsize=1)
