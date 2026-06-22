@@ -3,16 +3,17 @@ import streamlit as st
 import logging
 import uuid
 from logging_config import setup_logging
-from unified_guidance import generate_counselor_guidance
+from unified_guidance import analyze_message
 from archiver import archive_conversation, archive_session
 from schemas import Conversation, Message, SessionLog
 from topic_classifier import predict_topic, load_topic_classifier
 from patient_ml import analyze_sentiment
-from llm_rag import generate_advice
+from llm_rag import generate_advice, stream_advice
 from patient_profile import get_patient_profile, create_patient_profile, update_patient_fields
 from safety import SafetyChecker
 from config import settings
 from dashboard import render_dashboard
+from explain import render_advice, render_why
 
 # Ensure an event loop is available
 try:
@@ -58,14 +59,18 @@ def check_authentication() -> bool:
 st.set_page_config(
     page_title="Mental Health Counselor Guidance",
     page_icon="🧠",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Hide default Streamlit menus and headers
+# Hide default Streamlit chrome and apply light layout polish.
 st.markdown("""
 <style>
 #MainMenu, footer, header {visibility: hidden;}
+.block-container {padding-top: 2.5rem; max-width: 1180px;}
+[data-testid="stChatMessage"] {padding: 0.2rem 0;}
+[data-testid="stMetric"] {background: var(--secondary-background-color, #F4F7F6);
+    border-radius: 10px; padding: 10px 14px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -160,35 +165,54 @@ def handle_user_message(message):
         f"{m['role'].capitalize()}: {m['content']}" for m in st.session_state.conversation
     )
 
-    with st.spinner("Processing your message..."):
-        try:
-            guidance = generate_counselor_guidance(
-                message,
-                st.session_state.patient_profile,
-                conversation_text,
+    assistant_reply = "I'm sorry, something went wrong."
+    analytics = {"safety_protocol": _safety_checker.check_input(message)}
+
+    try:
+        with st.status("Analyzing the patient message…", expanded=True) as status:
+            analysis = analyze_message(message, st.session_state.patient_profile, conversation_text)
+
+            sp = analysis.get("safety_protocol")
+            st.write(f"Safety: {sp['action'] + ' — ' + sp['flag_type'] if sp else 'no crisis indicators'}")
+            urgency = analysis.get("urgency") or {}
+            st.write(
+                f"Emotion: {urgency.get('label') or 'neutral'} · "
+                f"Topic: {analysis.get('predicted_topic') or 'n/a'} · "
+                f"Sentiment: {analysis.get('sentiment') or 'n/a'}"
             )
-            assistant_reply = guidance.get("generated_advice", "No advice available.")
-            analytics = {
-                "topic": guidance.get("predicted_topic"),
-                "topic_confidence": guidance.get("topic_confidence"),
-                "sentiment": guidance.get("sentiment"),
-                "sentiment_score": guidance.get("sentiment_score"),
-                "safety_protocol": guidance.get("safety_protocol"),
-                "urgency": guidance.get("urgency"),
-            }
-        except Exception:
-            logger.exception("Guidance generation error")
-            assistant_reply = "I'm sorry, something went wrong."
-            # Even on total failure, never drop the crisis screen for the latest message.
-            analytics = {"safety_protocol": _safety_checker.check_input(message)}
+            st.write(f"Retrieved {len(analysis.get('historical_examples') or [])} similar case(s).")
+
+            status.update(label="Generating guidance…")
+            assistant_reply = st.write_stream(
+                stream_advice(analysis.get("analysis_context", ""), analysis.get("historical_examples"))
+            ) or "No advice available."
+            status.update(label="Guidance ready", state="complete", expanded=False)
+
+        analytics = {
+            "topic": analysis.get("predicted_topic"),
+            "topic_confidence": analysis.get("topic_confidence"),
+            "sentiment": analysis.get("sentiment"),
+            "sentiment_score": analysis.get("sentiment_score"),
+            "safety_protocol": analysis.get("safety_protocol"),
+            "urgency": analysis.get("urgency"),
+            # Kept in session state only (not archived) for the "why this guidance" panel.
+            "historical_examples": analysis.get("historical_examples"),
+            "analysis_context": analysis.get("analysis_context"),
+        }
+    except Exception:
+        logger.exception("Guidance generation error")
+        analytics = {"safety_protocol": _safety_checker.check_input(message)}
 
     st.session_state.conversation.append({
         "role": "assistant",
         "content": assistant_reply,
         "analysis": analytics,
     })
+    # Archived metadata stays lean (no retrieved examples / raw context).
+    lean_metadata = {k: analytics.get(k) for k in
+                     ("topic", "topic_confidence", "sentiment", "sentiment_score", "safety_protocol", "urgency")}
     st.session_state.conversation_model.add_message(
-        Message(content=assistant_reply, is_user=False, metadata=analytics)
+        Message(content=assistant_reply, is_user=False, metadata=lean_metadata)
     )
 
     # Roll up distinct risk flags + topics for the session.
@@ -312,7 +336,7 @@ def chat_page():
                     st.write(msg["content"])
             else:
                 with st.chat_message("assistant"):
-                    st.write(msg["content"])
+                    render_advice(msg["content"])
                     analysis = msg.get("analysis")
                     if analysis:
                         st.caption(
@@ -341,6 +365,8 @@ def chat_page():
                             st.warning(
                                 f"Elevated emotional urgency: {urgency.get('label')}{score_text}"
                             )
+
+                        render_why(analysis)
 
     with col_dash:
         render_dashboard(
@@ -399,7 +425,7 @@ def chat_page():
                 st.markdown(f"**Predicted Topic:** {predicted_topic}  \n**Confidence:** {topic_confidence:.2f}")
                 st.markdown(f"**Overall Sentiment:** {sentiment}  \n**Sentiment Score:** {sentiment_score}")
                 st.markdown("### Recommendations")
-                st.write(recommendations)
+                st.markdown(recommendations)
                 
             except Exception as e:
                 logger.exception("Error generating report")
