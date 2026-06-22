@@ -19,7 +19,7 @@ import random
 import uuid
 from datetime import datetime, timedelta
 
-from db import get_db
+from db import get_db, CORPUS_COLLECTION
 from model_cache import get_embedding_model, get_pinecone_index
 
 random.seed(42)
@@ -121,7 +121,7 @@ _ADVICE = {
 
 def _wipe(db, index):
     print("Wiping MongoDB collections…")
-    for coll in ("patients", "sessions", "PatientConvo"):
+    for coll in ("patients", "sessions", "PatientConvo", CORPUS_COLLECTION):
         res = db[coll].delete_many({})
         print(f"  cleared {coll}: {res.deleted_count}")
     print("Wiping Pinecone 'default' namespace…")
@@ -163,8 +163,8 @@ def _build_corpus(db, index, embed, per_topic=14):
             })
             qid += 1
             added += 1
-    db["PatientConvo"].insert_many([dict(d) for d in docs])
-    print(f"  inserted {len(docs)} corpus docs into PatientConvo")
+    db[CORPUS_COLLECTION].insert_many([dict(d) for d in docs])
+    print(f"  inserted {len(docs)} corpus docs into {CORPUS_COLLECTION}")
 
     print("  embedding + upserting to Pinecone…")
     texts = [d["questionText"] for d in docs]

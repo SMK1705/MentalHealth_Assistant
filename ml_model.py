@@ -6,13 +6,14 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from config import settings
+from db import CORPUS_COLLECTION
 
 logger = logging.getLogger(__name__)
 
 def load_data_from_mongodb():
     client = pymongo.MongoClient(settings.safe_mongo_uri)
     db = client.get_database("MentalHealthDB")
-    collection = db["PatientConvo"]
+    collection = db[CORPUS_COLLECTION]
     data = list(collection.find({}))
     logger.info("Loaded %d documents from MongoDB", len(data))
     return data

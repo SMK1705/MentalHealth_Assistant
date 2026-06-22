@@ -3,6 +3,7 @@ import pymongo
 import logging
 from langchain.schema import Document
 from config import settings
+from db import CORPUS_COLLECTION
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ def load_dataset():
     try:
         client = pymongo.MongoClient(settings.safe_mongo_uri, ssl=True, ssl_cert_reqs=ssl.CERT_NONE)
         db = client.get_database("MentalHealthDB")
-        collection = db["PatientConvo"]
+        collection = db[CORPUS_COLLECTION]
 
         data = list(collection.find({}))
         logger.info("Number of documents found: %d", len(data))
