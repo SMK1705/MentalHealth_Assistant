@@ -91,6 +91,132 @@ def _parse_lines(text):
     """Split a textarea value into a clean list of non-empty, stripped lines."""
     return [line.strip() for line in (text or "").splitlines() if line.strip()]
 
+
+# Seeded demo patients so investors can try the tool without setup.
+DEMO_PERSONAS = {
+    "Alex — anxiety": {
+        "patient_id": "demo_alex",
+        "medical_history": ["generalized anxiety disorder", "chronic insomnia"],
+        "therapy_goals": ["improve sleep", "reduce daily anxiety"],
+    },
+    "Jordan — grief": {
+        "patient_id": "demo_jordan",
+        "medical_history": ["recent bereavement", "low mood"],
+        "therapy_goals": ["process grief", "re-engage with daily life"],
+    },
+    "Sam — work stress": {
+        "patient_id": "demo_sam",
+        "medical_history": ["burnout", "work-related stress"],
+        "therapy_goals": ["set boundaries", "manage workload stress"],
+    },
+}
+
+# One-click messages that walk a distress -> crisis -> recovery arc in a demo.
+SUGGESTED_PROMPTS = [
+    {"label": "Share distress", "text": "I've been really anxious lately and I can't sleep at all"},
+    {"label": "Express a crisis", "text": "Honestly, sometimes I feel like I want to end it all"},
+    {"label": "Show improvement", "text": "Talking this through actually helps — thank you"},
+]
+
+
+def start_demo(persona):
+    """Begin a self-serve demo with a seeded persona (in-memory, no DB writes)."""
+    st.session_state.demo_mode = True
+    st.session_state.patient_profile = {
+        "patient_id": persona["patient_id"],
+        "medical_history": list(persona["medical_history"]),
+        "therapy_goals": list(persona["therapy_goals"]),
+    }
+    st.session_state.conversation = []
+    st.session_state.conversation_model = Conversation(
+        session_id=str(uuid.uuid4()), patient_id=persona["patient_id"], messages=[]
+    )
+    st.session_state.session_risk_flags = []
+    st.session_state.session_topics = []
+    st.session_state.page = "chat"
+    st.rerun()
+
+
+def reset_session():
+    """Clear the session and return to the landing page."""
+    for key in (
+        "conversation", "conversation_model", "patient_profile",
+        "session_risk_flags", "session_topics", "demo_mode", "page",
+    ):
+        st.session_state.pop(key, None)
+    st.rerun()
+
+
+def handle_user_message(message):
+    """Run one patient message through the guidance pipeline and update state.
+
+    Shared by the chat input and the demo one-click prompts. Skips database
+    archiving in demo mode (the demo runs purely in-memory).
+    """
+    st.session_state.conversation.append({"role": "user", "content": message})
+    st.session_state.conversation_model.add_message(Message(content=message, is_user=True))
+
+    conversation_text = "\n".join(
+        f"{m['role'].capitalize()}: {m['content']}" for m in st.session_state.conversation
+    )
+
+    with st.spinner("Processing your message..."):
+        try:
+            guidance = generate_counselor_guidance(
+                message,
+                st.session_state.patient_profile,
+                conversation_text,
+            )
+            assistant_reply = guidance.get("generated_advice", "No advice available.")
+            analytics = {
+                "topic": guidance.get("predicted_topic"),
+                "topic_confidence": guidance.get("topic_confidence"),
+                "sentiment": guidance.get("sentiment"),
+                "sentiment_score": guidance.get("sentiment_score"),
+                "safety_protocol": guidance.get("safety_protocol"),
+                "urgency": guidance.get("urgency"),
+            }
+        except Exception:
+            logger.exception("Guidance generation error")
+            assistant_reply = "I'm sorry, something went wrong."
+            # Even on total failure, never drop the crisis screen for the latest message.
+            analytics = {"safety_protocol": _safety_checker.check_input(message)}
+
+    st.session_state.conversation.append({
+        "role": "assistant",
+        "content": assistant_reply,
+        "analysis": analytics,
+    })
+    st.session_state.conversation_model.add_message(
+        Message(content=assistant_reply, is_user=False, metadata=analytics)
+    )
+
+    # Roll up distinct risk flags + topics for the session.
+    protocol = analytics.get("safety_protocol")
+    flag_type = protocol.get("flag_type") if protocol else None
+    if flag_type and flag_type not in st.session_state.session_risk_flags:
+        st.session_state.session_risk_flags.append(flag_type)
+    topic = analytics.get("topic")
+    if topic and topic not in st.session_state.session_topics:
+        st.session_state.session_topics.append(topic)
+
+    # Persist to the database unless this is an in-memory demo session.
+    if not st.session_state.get("demo_mode"):
+        archive_conversation(st.session_state.conversation_model)
+        try:
+            archive_session(SessionLog(
+                session_id=st.session_state.conversation_model.session_id,
+                patient_id=st.session_state.conversation_model.patient_id,
+                detected_topics=st.session_state.session_topics,
+                risk_flags=st.session_state.session_risk_flags,
+                sentiment_score=float(analytics.get("sentiment_score") or 0.0),
+            ))
+        except Exception:
+            logger.exception("Failed to archive session log")
+
+    st.rerun()
+
+
 # Landing Page
 def landing_page():
     st.markdown("""
@@ -158,9 +284,23 @@ def landing_page():
         st.session_state.page = "chat"
         st.rerun()
 
+    st.divider()
+    st.markdown("#### Or try a live demo")
+    st.caption("Explore the tool with a sample patient — no patient ID or setup needed.")
+    demo_cols = st.columns(len(DEMO_PERSONAS))
+    for i, (name, persona) in enumerate(DEMO_PERSONAS.items()):
+        if demo_cols[i].button(name, key=f"demo_persona_{i}", use_container_width=True):
+            start_demo(persona)
+
 # Chat Page
 def chat_page():
     st.title("🧠 Mental Health Counselor Guidance")
+
+    ctrl_left, ctrl_right = st.columns([3, 1])
+    if st.session_state.get("demo_mode"):
+        ctrl_left.caption("Demo mode — sample patient, nothing is saved.")
+    if ctrl_right.button("New session", use_container_width=True):
+        reset_session()
 
     col_chat, col_dash = st.columns([1.4, 1], gap="large")
 
@@ -208,78 +348,18 @@ def chat_page():
             st.session_state.get("patient_profile") or {},
         )
 
-    # Chat input with spinner for each conversation message generation
+    # Demo: one-click messages that walk a distress -> crisis -> recovery arc.
+    if st.session_state.get("demo_mode"):
+        st.caption("Quick demo messages")
+        prompt_cols = st.columns(len(SUGGESTED_PROMPTS))
+        for i, prompt in enumerate(SUGGESTED_PROMPTS):
+            if prompt_cols[i].button(prompt["label"], key=f"suggested_{i}", use_container_width=True):
+                handle_user_message(prompt["text"])
+
+    # Chat input
     user_message = st.chat_input("Type your message here...")
     if user_message:
-        # Append user message
-        st.session_state.conversation.append({"role": "user", "content": user_message})
-        st.session_state.conversation_model.add_message(Message(content=user_message, is_user=True))
-
-        # Build conversation context
-        conversation_text = "\n".join(
-            f"{msg['role'].capitalize()}: {msg['content']}" for msg in st.session_state.conversation
-        )
-
-        with st.spinner("Processing your message..."):
-            try:
-                guidance = generate_counselor_guidance(
-                    user_message,
-                    st.session_state.patient_profile,
-                    conversation_text,
-                )
-                assistant_reply = guidance.get("generated_advice", "No advice available.")
-                analytics = {
-                    "topic": guidance.get("predicted_topic"),
-                    "topic_confidence": guidance.get("topic_confidence"),
-                    "sentiment": guidance.get("sentiment"),
-                    "sentiment_score": guidance.get("sentiment_score"),
-                    "safety_protocol": guidance.get("safety_protocol"),
-                    "urgency": guidance.get("urgency"),
-                }
-            except Exception as e:
-                logger.exception("Guidance generation error")
-                assistant_reply = "I'm sorry, something went wrong."
-                # Even on total failure, never drop the crisis screen for the
-                # latest patient message — re-run the cheap regex directly.
-                analytics = {"safety_protocol": _safety_checker.check_input(user_message)}
-
-        # Append assistant's reply along with analytics
-        st.session_state.conversation.append({
-            "role": "assistant",
-            "content": assistant_reply,
-            "analysis": analytics,
-        })
-        st.session_state.conversation_model.add_message(
-            Message(content=assistant_reply, is_user=False, metadata=analytics)
-        )
-
-        # Archive conversation
-        archive_conversation(st.session_state.conversation_model)
-
-        # Roll up session-level analytics (distinct risk flags + topics) and
-        # persist a SessionLog so crisis events are captured even if the
-        # counselor never generates a report. Best-effort: never break chat.
-        protocol = analytics.get("safety_protocol")
-        flag_type = protocol.get("flag_type") if protocol else None
-        if flag_type and flag_type not in st.session_state.session_risk_flags:
-            st.session_state.session_risk_flags.append(flag_type)
-        topic = analytics.get("topic")
-        if topic and topic not in st.session_state.session_topics:
-            st.session_state.session_topics.append(topic)
-
-        try:
-            archive_session(SessionLog(
-                session_id=st.session_state.conversation_model.session_id,
-                patient_id=st.session_state.conversation_model.patient_id,
-                detected_topics=st.session_state.session_topics,
-                risk_flags=st.session_state.session_risk_flags,
-                sentiment_score=float(analytics.get("sentiment_score") or 0.0),
-            ))
-        except Exception:
-            logger.exception("Failed to archive session log")
-
-        # Refresh display to show new message
-        st.rerun()
+        handle_user_message(user_message)
 
     # Report generation section with spinner
     if st.button("Exit Conversation and Show Report", key="exit_button", help="Generate detailed patient report"):
