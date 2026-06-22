@@ -5,6 +5,7 @@ from typing import List
 class Message(BaseModel):
     content: str
     is_user: bool
+    speaker: str = ""  # "doctor" | "patient" for two-channel session transcripts
     timestamp: datetime = Field(default_factory=datetime.now)
     metadata: dict = Field(default_factory=dict)
 
@@ -32,4 +33,6 @@ class SessionLog(BaseModel):
     recommendations: List[str] = Field(default_factory=list)
     risk_flags: List[str] = Field(default_factory=list)
     sentiment_score: float = 0.0
+    doctor_notes: str = ""
+    suggestions: List[dict] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.now)
