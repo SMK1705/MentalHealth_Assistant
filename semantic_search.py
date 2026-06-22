@@ -26,8 +26,16 @@ def semantic_search(query: str, top_k: int = 5):
     )
     logger.debug("Pinecone response: %s", response)
 
+    # Pinecone returns a dict-like QueryResponse; tolerate both mapping and
+    # attribute access and an empty/absent result rather than raising KeyError.
+    try:
+        matches = response["matches"]
+    except (KeyError, TypeError):
+        matches = getattr(response, "matches", None)
+    matches = matches or []
+
     question_ids = []
-    for match in response["matches"]:
+    for match in matches:
         metadata = match.get("metadata") or {}
         qid = metadata.get("questionID")
         if qid is None:

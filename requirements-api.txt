@@ -1,0 +1,5 @@
+# Optional dependencies for the FastAPI REST entry point (main_fastapi.py).
+# The Streamlit app does not need these.
+-r requirements.txt
+fastapi==0.115.12
+uvicorn==0.34.0

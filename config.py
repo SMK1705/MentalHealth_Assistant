@@ -16,7 +16,12 @@ class Settings(BaseSettings):
     @property
     def safe_mongo_uri(self):
         import re
-        match = re.match(r"(mongodb(?:\+srv)?://)(.*):(.*)@(.*)", self.mongo_uri)
+        # Username has no unescaped ':'/'@', the password runs up to the LAST
+        # '@', and the host is the final '@'-free segment. This avoids the
+        # greedy mis-split a password containing ':' would otherwise cause.
+        match = re.match(
+            r"(mongodb(?:\+srv)?://)([^:@/]+):(.*)@([^@]+)$", self.mongo_uri
+        )
         if match:
             prefix, user, pwd, rest = match.groups()
             # Decode first, then re-encode, so an already-encoded password is

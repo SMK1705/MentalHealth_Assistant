@@ -1,2 +1,17 @@
+# Secrets — never commit
 .env
-__pycache__
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Runtime artifacts (may contain PHI / patient text)
+*.log
+logs/
+conversation_history.db
+*.sqlite
+*.sqlite3

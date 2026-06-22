@@ -244,7 +244,8 @@ Open `http://localhost:8501`.
 ### REST API (optional)
 
 ```bash
-uvicorn main_fastapi:app --reload   # requires fastapi + uvicorn
+pip install -r requirements-api.txt   # adds fastapi + uvicorn
+uvicorn main_fastapi:app --reload
 ```
 
 `POST /guidance` with `{ "user_input", "patient_profile", "conversation_history" }` returns the analysis + generated guidance.
