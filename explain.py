@@ -53,43 +53,40 @@ def render_advice(advice_text):
 
 
 def render_why(analysis):
-    """Per-message 'Why this guidance' expander: the signals, retrieved cases,
-    and the exact context sent to the model."""
+    """'Why this guidance' grounding panel: the driving signals, retrieved
+    cases, and the exact context sent to the model — in the cockpit style."""
     import streamlit as st
+    import ui
     if not analysis:
         return
-    with st.expander("Why this guidance"):
-        st.markdown("**Signals that informed this**")
-        rows = []
-        topic, tconf = analysis.get("topic"), analysis.get("topic_confidence")
-        if topic:
-            note = " · weak hint" if isinstance(tconf, (int, float)) and tconf < 0.4 else ""
-            conf = f" · {tconf:.0%} confidence{note}" if isinstance(tconf, (int, float)) else ""
-            rows.append(f"- Topic: `{topic}`{conf}")
-        sentiment, sscore = analysis.get("sentiment"), analysis.get("sentiment_score")
-        if sentiment:
-            score = f" ({sscore:+.2f})" if isinstance(sscore, (int, float)) else ""
-            rows.append(f"- Sentiment: {sentiment}{score}")
-        urgency = analysis.get("urgency") or {}
-        if urgency.get("label"):
-            score = f" ({urgency['score']:.0%})" if isinstance(urgency.get("score"), (int, float)) else ""
-            rows.append(f"- Emotion: {urgency['label']}{score}")
-        sp = analysis.get("safety_protocol")
-        if sp:
-            rows.append(f"- Safety: **{sp.get('action')}** — {sp.get('flag_type')}")
-        st.markdown("\n".join(rows) if rows else "_No signals recorded._")
 
-        examples = analysis.get("historical_examples") or []
-        st.markdown(f"**Similar past cases retrieved ({len(examples)})**")
-        if examples:
-            for ex in examples[:3]:
-                q = (ex.get("questionText") or "")[:200]
-                a = (ex.get("answerText") or "")[:200]
-                st.markdown(f"- *Patient:* {q}\n\n  *Therapist:* {a}")
-        else:
-            st.caption("None retrieved (semantic search returned no matches).")
+    signals = []
+    topic, tconf = analysis.get("topic"), analysis.get("topic_confidence")
+    if topic:
+        conf = f" · {tconf:.0%}" if isinstance(tconf, (int, float)) else ""
+        signals.append(("Topic (BART zero-shot)", f"{topic}{conf}"))
+    sentiment, sscore = analysis.get("sentiment"), analysis.get("sentiment_score")
+    if sentiment:
+        score = f" · {sscore:+.2f}" if isinstance(sscore, (int, float)) else ""
+        signals.append(("Sentiment (RoBERTa)", f"{sentiment}{score}"))
+    urgency = analysis.get("urgency") or {}
+    if urgency.get("label"):
+        score = f" · {urgency['score']:.0%}" if isinstance(urgency.get("score"), (int, float)) else ""
+        signals.append(("Emotion (DistilRoBERTa)", f"{urgency['label']}{score}"))
+    sp = analysis.get("safety_protocol")
+    signals.append(("Crisis screen", f"{sp.get('flag_type')} · {sp.get('action')}" if sp else "clear"))
 
-        context = analysis.get("analysis_context")
-        if context:
-            st.markdown("**Context sent to the model**")
-            st.code(context)
+    cases = []
+    for ex in (analysis.get("historical_examples") or [])[:3]:
+        cases.append({
+            "id": ex.get("questionID") or ex.get("id") or "—",
+            "sim": "",
+            "q": (ex.get("questionText") or "")[:200],
+            "a": (ex.get("answerText") or "")[:200],
+        })
+
+    with st.expander("Why this guidance — grounding"):
+        st.markdown(
+            ui.why_panel(signals, cases, analysis.get("analysis_context") or "(no context assembled)"),
+            unsafe_allow_html=True,
+        )

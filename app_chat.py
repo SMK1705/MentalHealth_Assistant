@@ -3,6 +3,8 @@ import hmac
 import streamlit as st
 import logging
 import uuid
+from datetime import datetime
+import ui
 from logging_config import setup_logging
 from unified_guidance import analyze_message
 from archiver import archive_conversation, archive_session
@@ -63,16 +65,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Hide default Streamlit chrome and apply light layout polish.
-st.markdown("""
-<style>
-#MainMenu, footer, header {visibility: hidden;}
-.block-container {padding-top: 2.5rem; max-width: 1200px;}
-[data-testid="stChatMessage"] {padding: 0.2rem 0;}
-[data-testid="stMetric"] {background: var(--secondary-background-color, #F4F7F6);
-    border-radius: 10px; padding: 10px 14px;}
-</style>
-""", unsafe_allow_html=True)
+# Cockpit theme: hide default chrome, fonts, widget styling, segmented toggle.
+st.markdown(ui.css(), unsafe_allow_html=True)
 
 # Initialize session state
 if "page" not in st.session_state:
@@ -128,7 +122,7 @@ SUGGESTED_PROMPTS = [
 _SESSION_KEYS = (
     "conversation", "conversation_model", "patient_profile", "session_risk_flags",
     "session_topics", "session_suggestions", "latest_suggestions", "latest_analysis",
-    "history_summary", "doctor_notes_input", "demo_mode",
+    "history_summary", "doctor_notes_input", "demo_mode", "session_started", "last_report",
 )
 
 
@@ -141,7 +135,9 @@ def _new_live_session(patient_id):
     st.session_state.session_risk_flags = []
     st.session_state.session_topics = []
     st.session_state.session_suggestions = []
-    for k in ("latest_suggestions", "latest_analysis", "history_summary", "doctor_notes_input"):
+    st.session_state.session_started = datetime.now()
+    for k in ("latest_suggestions", "latest_analysis", "history_summary",
+              "doctor_notes_input", "last_report"):
         st.session_state.pop(k, None)
 
 
@@ -316,7 +312,10 @@ def handle_turn(content, speaker):
     """Append a transcript turn. Patient turns trigger the assistant; doctor
     turns are logged as context only."""
     is_patient = speaker == "patient"
-    st.session_state.conversation.append({"speaker": speaker, "content": content})
+    st.session_state.conversation.append({
+        "speaker": speaker, "content": content,
+        "time": datetime.now().strftime("%H:%M"),
+    })
     st.session_state.conversation_model.add_message(
         Message(content=content, is_user=is_patient, speaker=speaker)
     )
@@ -326,188 +325,282 @@ def handle_turn(content, speaker):
     st.rerun()
 
 
-# Landing Page
+# --------------------------------------------------------------- cockpit glue
+def _elapsed_clock():
+    """mm:ss since the session started (updates each rerun, not live-ticking)."""
+    start = st.session_state.get("session_started")
+    if not start:
+        return "00:00"
+    secs = max(0, int((datetime.now() - start).total_seconds()))
+    return f"{secs // 60:02d}:{secs % 60:02d}"
+
+
+# Per-message transcript chips: (text, background, color).
+_AMBER = ("#fbf3e4", "#8a6a1f")
+_TOPIC = ("#eaf0fd", "#3052b8")
+
+
+def _transcript_messages():
+    """Adapt the live conversation into ui.transcript's message dicts, attaching
+    emotion/sentiment/topic chips and the crisis flag to analyzed patient turns."""
+    out = []
+    for m in st.session_state.conversation:
+        speaker = m.get("speaker") or "patient"
+        entry = {"speaker": speaker, "text": m.get("content"),
+                 "time": m.get("time", ""), "chips": [], "crisis": False}
+        a = m.get("analysis")
+        if a and speaker == "patient":
+            chips = []
+            urgency = a.get("urgency") or {}
+            if urgency.get("label"):
+                score = urgency.get("score")
+                label = str(urgency["label"]).title()
+                txt = f"{label} · {score:.0%}" if isinstance(score, (int, float)) else label
+                chips.append((txt, *_AMBER))
+            ss = a.get("sentiment_score")
+            if isinstance(ss, (int, float)):
+                bg, col = (("#fdeceb", "#b23a31") if ss < 0
+                           else ("#e8f5ef", "#2f8f6b") if ss > 0 else ("#eef1f6", "#647089"))
+                chips.append((f"{ss:+.2f}", bg, col))
+            if a.get("topic"):
+                chips.append((str(a["topic"]), *_TOPIC))
+            entry["chips"] = chips
+            entry["crisis"] = bool(a.get("safety_protocol"))
+        out.append(entry)
+    return out
+
+
+_PIPELINE_DEFS = [
+    ("Crisis screen", "regex · deterministic"),
+    ("Emotion / urgency", "DistilRoBERTa"),
+    ("Sentiment", "RoBERTa 3-class"),
+    ("Topic", "BART zero-shot"),
+    ("Semantic retrieval", "MiniLM · Pinecone"),
+    ("Generating guidance", "Groq · llama-3.3-70b"),
+]
+
+
+def _pipeline_stages():
+    """Build the analysis-pipeline panel state from the latest turn's outcome."""
+    a = st.session_state.get("latest_analysis") or {}
+    sug = st.session_state.get("latest_suggestions") or {}
+    if not a.get("analysis_context") and not a.get("safety_protocol") and not st.session_state.conversation:
+        return ([{"label": l, "sub": s, "status": "pending"} for l, s in _PIPELINE_DEFS],
+                False, "IDLE")
+    errors = a.get("errors") or []
+    sp = a.get("safety_protocol")
+    status_for = lambda key: "pending" if key in errors else "done"
+    stages = [
+        {"label": "Crisis screen", "sub": "regex · deterministic",
+         "status": "alert" if sp else "done"},
+        {"label": "Emotion / urgency", "sub": "DistilRoBERTa", "status": status_for("urgency")},
+        {"label": "Sentiment", "sub": "RoBERTa 3-class", "status": status_for("analysis")},
+        {"label": "Topic", "sub": "BART zero-shot", "status": status_for("analysis")},
+        {"label": "Semantic retrieval", "sub": "MiniLM · Pinecone", "status": status_for("retrieval")},
+        {"label": "Generating guidance", "sub": "Groq · llama-3.3-70b",
+         "status": "alert" if sug.get("_error") else "done"},
+    ]
+    degraded = bool(errors) or bool(sug.get("_error"))
+    return stages, False, ("DEGRADED" if degraded else "COMPLETE")
+
+
+def _open_session(patient_id, medical_history, therapy_goals):
+    """Load/create the patient profile and switch to the live session."""
+    try:
+        profile = get_patient_profile(patient_id)
+        if profile is None:
+            profile = create_patient_profile(
+                patient_id, medical_history=medical_history, therapy_goals=therapy_goals,
+            )
+        elif (medical_history and not profile.medical_history) or (
+            therapy_goals and not profile.therapy_goals
+        ):
+            profile = update_patient_fields(
+                patient_id,
+                medical_history=medical_history or profile.medical_history,
+                therapy_goals=therapy_goals or profile.therapy_goals,
+            )
+    except Exception:
+        logger.exception("Failed to load or create patient profile")
+        st.error("Could not load the patient profile. Please try again later.")
+        return
+
+    st.session_state.demo_mode = False
+    st.session_state.patient_profile = profile.dict()
+    _new_live_session(patient_id)
+    st.session_state.page = "chat"
+    st.rerun()
+
+
+# Landing / launch screen
 def landing_page():
-    st.markdown("""
-        <div style='text-align:center; padding:16px;'>
-            <h1>🩺 Live Session Assistant</h1>
-            <p style='font-size:17px;'>
-                A real-time co-pilot for mental-health clinicians. Enter a patient ID to load their
-                history, then log the live session — the assistant suggests the patient's likely state,
-                next questions to ask, follow-ups, and red flags.
-                <br><br><b>Decision support only — not a diagnosis. The clinician stays in control.</b>
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+    _, mid, _ = st.columns([1, 2.2, 1])
+    with mid:
+        st.markdown(ui.launch_hero(), unsafe_allow_html=True)
 
-    patient_id = st.text_input("Patient ID", key="patient_id_input")
-    medical_history_input = st.text_area(
-        "Clinical history (optional, one item per line)", key="medical_history_input"
-    )
-    therapy_goals_input = st.text_area(
-        "Therapy goals (optional, one item per line)", key="therapy_goals_input"
-    )
+        patient_id = st.text_input("Patient ID", key="patient_id_input", placeholder="e.g. PT-0042")
+        with st.expander("Add clinical context (optional)"):
+            medical_history_input = st.text_area(
+                "Clinical history (one item per line)", key="medical_history_input"
+            )
+            therapy_goals_input = st.text_area(
+                "Therapy goals (one item per line)", key="therapy_goals_input"
+            )
 
-    if st.button("Open session"):
-        patient_id = patient_id.strip()
-        if not patient_id:
-            st.error("Please enter a patient ID before starting.")
-            return
-
-        medical_history = _parse_lines(medical_history_input)
-        therapy_goals = _parse_lines(therapy_goals_input)
-
-        try:
-            profile = get_patient_profile(patient_id)
-            if profile is None:
-                profile = create_patient_profile(
-                    patient_id, medical_history=medical_history, therapy_goals=therapy_goals,
-                )
-            elif (medical_history and not profile.medical_history) or (
-                therapy_goals and not profile.therapy_goals
-            ):
-                profile = update_patient_fields(
+        if st.button("Open session", type="primary", use_container_width=True):
+            patient_id = (patient_id or "").strip()
+            if not patient_id:
+                st.error("Please enter a patient ID before starting.")
+            else:
+                _open_session(
                     patient_id,
-                    medical_history=medical_history or profile.medical_history,
-                    therapy_goals=therapy_goals or profile.therapy_goals,
+                    _parse_lines(st.session_state.get("medical_history_input")),
+                    _parse_lines(st.session_state.get("therapy_goals_input")),
                 )
-        except Exception:
-            logger.exception("Failed to load or create patient profile")
-            st.error("Could not load the patient profile. Please try again later.")
-            return
 
-        st.session_state.demo_mode = False
-        st.session_state.patient_profile = profile.dict()
-        _new_live_session(patient_id)
-        st.session_state.page = "chat"
-        st.rerun()
+        st.markdown(
+            f'<div style="display:flex;align-items:center;gap:12px;margin:18px 0 12px;">'
+            f'<span style="flex:1;height:1px;background:#dde3ee;"></span>'
+            f'<span style="font:500 10.5px/1 {ui.MONO};color:#aab2c4;letter-spacing:.04em;">'
+            f'OR START WITH A DEMO PERSONA</span>'
+            f'<span style="flex:1;height:1px;background:#dde3ee;"></span></div>',
+            unsafe_allow_html=True,
+        )
+        demo_cols = st.columns(len(DEMO_PERSONAS))
+        for i, (name, persona) in enumerate(DEMO_PERSONAS.items()):
+            if demo_cols[i].button(name, key=f"demo_persona_{i}", use_container_width=True):
+                start_demo(persona)
 
-    st.divider()
-    st.markdown("#### Or try a live demo")
-    st.caption("Explore the assistant with a sample patient — no patient ID or setup needed.")
-    demo_cols = st.columns(len(DEMO_PERSONAS))
-    for i, (name, persona) in enumerate(DEMO_PERSONAS.items()):
-        if demo_cols[i].button(name, key=f"demo_persona_{i}", use_container_width=True):
-            start_demo(persona)
+        st.markdown(ui.launch_footer(), unsafe_allow_html=True)
 
 
-# Chat Page
+def _generate_report():
+    """Compute the end-of-session report from accumulated session signals."""
+    conv = st.session_state.conversation
+    # Classify over the patient's own turns (doctor questions skew topic/sentiment).
+    patient_text = "\n".join(m["content"] for m in conv if m.get("speaker") == "patient") \
+        or "\n".join(m["content"] for m in conv)
+    classifier = load_topic_classifier()
+    predicted_topic, topic_confidence = predict_topic(patient_text, classifier)
+    sentiment, sentiment_score = analyze_sentiment(patient_text)
+
+    risk_flags = st.session_state.get("session_risk_flags") or []
+    topics = st.session_state.get("session_topics") or []
+    notes = st.session_state.get("doctor_notes_input", "")
+    prompt = (
+        f"Patient Session Report:\n"
+        f"Topic: {predicted_topic} (Confidence: {topic_confidence:.2f})\n"
+        f"Topics observed this session: {', '.join(topics) or 'n/a'}\n"
+        f"Overall Sentiment: {sentiment} (Score: {sentiment_score})\n"
+        f"Risk flags raised this session: {', '.join(risk_flags) or 'none'}\n"
+        f"Clinician notes: {notes or '(none)'}\n\n"
+        "Provide a structured clinician-facing session summary with sections:\n"
+        "1. **Presentation & key themes**\n"
+        "2. **Areas of concern / risk** — explicitly address every risk flag listed above.\n"
+        "3. **Suggested follow-up** (for the clinician to consider; not prescriptive).\n"
+        "Use clear headings and bullet points. Do not diagnose or prescribe."
+    )
+    recommendations_obj = generate_advice(prompt)
+    recommendations = (recommendations_obj if isinstance(recommendations_obj, str)
+                       else str(recommendations_obj))
+    return {
+        "topic": predicted_topic, "topic_conf": topic_confidence,
+        "sentiment": sentiment, "score": sentiment_score,
+        "risk_flags": risk_flags, "topics": topics, "recommendations": recommendations,
+    }
+
+
+@st.dialog("End-of-session report", width="large")
+def _report_dialog():
+    pid = st.session_state.conversation_model.patient_id
+    st.caption(f"{pid} · {_elapsed_clock()} · {len(st.session_state.conversation)} turns logged")
+    if st.button("Generate / regenerate", type="primary") or "last_report" not in st.session_state:
+        with st.spinner("Generating the session report…"):
+            try:
+                st.session_state["last_report"] = _generate_report()
+            except Exception:
+                logger.exception("Error generating report")
+                st.session_state.pop("last_report", None)
+                st.error("An error occurred while generating the report. Please try again later.")
+                return
+    rep = st.session_state.get("last_report")
+    if not rep:
+        return
+    if rep["risk_flags"]:
+        st.error("**Risk flags raised this session:** " + ", ".join(rep["risk_flags"]))
+    st.markdown(f"**Predicted topic:** {rep['topic']} · **Confidence:** {rep['topic_conf']:.2f}")
+    st.markdown(f"**Overall sentiment:** {rep['sentiment']} ({rep['score']})")
+    if rep["topics"]:
+        st.caption("Topics detected: " + ", ".join(rep["topics"]))
+    st.markdown(rep["recommendations"])
+    st.caption("Decision support generated from session signals — not a diagnosis or medical "
+               "record. Review, edit, and sign before filing.")
+
+
+# Chat / cockpit page
 def chat_page():
-    st.title("🩺 Live Session Assistant")
-    st.caption("Decision support for the clinician — not a diagnosis. You stay in control.")
-
     # Surface a persistence failure from the previous turn (set just before the
     # rerun that brought us here, so it could not be shown inline).
     if st.session_state.pop("persist_error", False):
         st.warning("⚠️ The last turn may not have been saved to the database. "
                    "Check the patient profile exists and the database is reachable.")
 
-    ctrl_left, ctrl_right = st.columns([3, 1])
+    pid = st.session_state.conversation_model.patient_id
+    sid = st.session_state.conversation_model.session_id
+    conv = st.session_state.conversation
+    profile = st.session_state.get("patient_profile") or {}
+    latest_analysis = st.session_state.get("latest_analysis") or {}
+    latest_suggestions = st.session_state.get("latest_suggestions") or {}
+
+    st.markdown(ui.header_bar(pid, _elapsed_clock(), len(conv)), unsafe_allow_html=True)
+
+    c_info, c_report, c_new = st.columns([6, 1.6, 1.2])
     if st.session_state.get("demo_mode"):
-        ctrl_left.caption("Demo mode — sample patient, nothing is saved.")
-    if ctrl_right.button("New session", use_container_width=True):
+        c_info.caption("Demo mode — sample patient, nothing is saved.")
+    if c_report.button("End session & report", type="primary", use_container_width=True):
+        _report_dialog()
+    if c_new.button("New session", use_container_width=True):
         reset_session()
 
-    render_patient_overview(
-        st.session_state.conversation_model.patient_id,
-        st.session_state.get("patient_profile") or {},
-        exclude_session_id=st.session_state.conversation_model.session_id,
-    )
-    st.divider()
+    left, center, right = st.columns([316, 480, 404], gap="medium")
 
-    col_chat, col_dash = st.columns([1.3, 1], gap="large")
+    # LEFT — patient context + clinician notes
+    with left:
+        render_patient_overview(pid, profile, exclude_session_id=sid)
+        st.markdown('<div class="lsa-h" style="margin-top:4px;"><span class="bar"></span>'
+                    '<span class="t">CLINICIAN NOTES</span></div>', unsafe_allow_html=True)
+        st.text_area("Clinician notes", key="doctor_notes_input", height=110,
+                     label_visibility="collapsed",
+                     placeholder="Private notes for this session — saved with the session…")
 
-    with col_chat:
-        st.markdown("##### Live transcript")
-        for msg in st.session_state.conversation:
-            speaker = msg.get("speaker") or ("patient" if msg.get("role") == "user" else "doctor")
-            avatar = "🩺" if speaker == "doctor" else "🧑"
-            with st.chat_message(speaker, avatar=avatar):
-                st.markdown(f"**{speaker.capitalize()}:** {msg['content']}")
+    # CENTER — crisis banner + transcript + composer
+    with center:
+        sp = latest_analysis.get("safety_protocol")
+        if sp:
+            st.markdown(ui.crisis_banner(sp.get("action"), sp.get("flag_type"), sp.get("response")),
+                        unsafe_allow_html=True)
+        st.markdown(ui.transcript(_transcript_messages(), len(conv)), unsafe_allow_html=True)
 
+        speaker_label = st.radio("Log turn as", ["Patient", "Doctor"], horizontal=True,
+                                 key="speaker_select", label_visibility="collapsed")
         if st.session_state.get("demo_mode"):
             st.caption("Quick demo patient turns")
             prompt_cols = st.columns(len(SUGGESTED_PROMPTS))
-            for i, prompt in enumerate(SUGGESTED_PROMPTS):
-                if prompt_cols[i].button(prompt["label"], key=f"suggested_{i}", use_container_width=True):
-                    handle_turn(prompt["text"], "patient")
+            for i, p in enumerate(SUGGESTED_PROMPTS):
+                if prompt_cols[i].button(p["label"], key=f"suggested_{i}", use_container_width=True):
+                    handle_turn(p["text"], "patient")
 
-    with col_dash:
-        st.markdown("##### Session assistant")
-        render_suggestions(
-            st.session_state.get("latest_suggestions") or {},
-            st.session_state.get("latest_analysis") or {},
-        )
-        with st.expander("Session metrics", expanded=False):
-            render_dashboard(st.session_state.conversation, st.session_state.get("patient_profile") or {})
+    # RIGHT — analysis pipeline + decision support + session metrics
+    with right:
+        stages, running, status_label = _pipeline_stages()
+        st.markdown(ui.pipeline_panel(stages, running, status_label), unsafe_allow_html=True)
+        render_suggestions(latest_suggestions, latest_analysis)
+        render_dashboard(conv, profile)
 
-        st.text_area("Doctor notes", key="doctor_notes_input", height=100,
-                     placeholder="Your observations, overrides, plan…")
-
-        audit = st.session_state.get("session_suggestions") or []
-        if audit:
-            with st.expander(f"Assistant audit trail ({len(audit)})"):
-                for i, entry in enumerate(audit, 1):
-                    s = entry.get("suggestions") or {}
-                    st.markdown(f"**Turn {i}** — _{(entry.get('turn') or '')[:60]}_")
-                    if s.get("emotional_state"):
-                        st.caption(f"state: {s['emotional_state']}")
-                    if s.get("next_questions"):
-                        st.caption("asked to consider: " + " | ".join(s["next_questions"][:3]))
-                    if entry.get("safety"):
-                        st.caption(f"safety: {entry['safety'].get('flag_type')}")
-
-    # Two-channel input: choose the speaker, then log the turn.
-    speaker_label = st.radio("Log turn as", ["Patient", "Doctor"], horizontal=True, key="speaker_select")
+    # Pinned two-channel input.
     turn = st.chat_input(f"Log what the {speaker_label.lower()} said…")
     if turn:
         handle_turn(turn, "patient" if speaker_label == "Patient" else "doctor")
-
-    with st.expander("Generate end-of-session report"):
-        if st.button("Generate report", key="exit_button"):
-            with st.spinner("Generating the session report…"):
-                try:
-                    # Classify over the patient's own turns (the doctor's
-                    # questions would skew topic/sentiment).
-                    patient_text = "\n".join(
-                        m["content"] for m in st.session_state.conversation
-                        if m.get("speaker") == "patient"
-                    ) or "\n".join(m["content"] for m in st.session_state.conversation)
-                    classifier = load_topic_classifier()
-                    predicted_topic, topic_confidence = predict_topic(patient_text, classifier)
-                    sentiment, sentiment_score = analyze_sentiment(patient_text)
-
-                    # Carry the safety signals accumulated DURING the session
-                    # into the report — a crisis flagged earlier must not vanish.
-                    risk_flags = st.session_state.get("session_risk_flags") or []
-                    topics = st.session_state.get("session_topics") or []
-                    notes = st.session_state.get("doctor_notes_input", "")
-                    prompt = (
-                        f"Patient Session Report:\n"
-                        f"Topic: {predicted_topic} (Confidence: {topic_confidence:.2f})\n"
-                        f"Topics observed this session: {', '.join(topics) or 'n/a'}\n"
-                        f"Overall Sentiment: {sentiment} (Score: {sentiment_score})\n"
-                        f"Risk flags raised this session: {', '.join(risk_flags) or 'none'}\n"
-                        f"Clinician notes: {notes or '(none)'}\n\n"
-                        "Provide a structured clinician-facing session summary with sections:\n"
-                        "1. **Presentation & key themes**\n"
-                        "2. **Areas of concern / risk** — explicitly address every risk flag listed above.\n"
-                        "3. **Suggested follow-up** (for the clinician to consider; not prescriptive).\n"
-                        "Use clear headings and bullet points. Do not diagnose or prescribe."
-                    )
-                    recommendations_obj = generate_advice(prompt)
-                    recommendations = (recommendations_obj if isinstance(recommendations_obj, str)
-                                       else str(recommendations_obj))
-                    st.divider()
-                    st.subheader("📝 Session report")
-                    st.markdown(f"**Predicted topic:** {predicted_topic} · **Confidence:** {topic_confidence:.2f}")
-                    st.markdown(f"**Overall sentiment:** {sentiment} ({sentiment_score})")
-                    if risk_flags:
-                        st.error("**Risk flags raised this session:** " + ", ".join(risk_flags))
-                    st.markdown(recommendations)
-                except Exception:
-                    logger.exception("Error generating report")
-                    st.error("An error occurred while generating the report. Please try again later.")
 
 
 # Main Navigation
