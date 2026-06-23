@@ -1,37 +1,61 @@
-import asyncio
+"""Streamlit entry point — the Live Session Cockpit prototype WIRED to the real backend.
+
+The pixel-perfect design (``cockpit_component/``) is mounted as a bidirectional
+Streamlit component. Typed PATIENT turns are routed to the real Python pipeline —
+deterministic crisis screen (safety.py), emotion/urgency (DistilRoBERTa),
+sentiment (RoBERTa), topic (BART zero-shot), semantic retrieval (MiniLM +
+Pinecone over the Mongo corpus), and Groq decision-support — and the chips,
+decision-support panel, RAG "why" panel, and crisis banner reflect REAL outputs.
+
+The scripted "Advance" button keeps the canned demo arc (PT-0042). Heavy ML
+imports are lazy, so the launch screen appears instantly; the first analyzed turn
+pays the model-load cost.
+
+The earlier Streamlit-native UI is preserved in ``app_live.py``.
+"""
 import hmac
-import streamlit as st
 import logging
-import uuid
-from logging_config import setup_logging
-from unified_guidance import analyze_message
-from archiver import archive_conversation, archive_session
-from schemas import Conversation, Message, SessionLog
-from topic_classifier import predict_topic, load_topic_classifier
-from patient_ml import analyze_sentiment
-from llm_rag import generate_advice
-from patient_profile import (
-    get_patient_profile, create_patient_profile, update_patient_fields, get_patient_sessions,
-)
-from safety import SafetyChecker
+from pathlib import Path
+
+import streamlit as st
+import streamlit.components.v1 as components
+
 from config import settings
-from dashboard import render_dashboard
-from session_assistant import generate_session_suggestions, render_suggestions
-from patient_overview import render_patient_overview, build_patient_summary, build_history_summary
+from logging_config import setup_logging
 
-# Ensure an event loop is available
-try:
-    asyncio.get_running_loop()
-except RuntimeError:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-# Logging setup
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# Stateless crisis screener for the guaranteed fallback.
-_safety_checker = SafetyChecker()
+st.set_page_config(
+    page_title="Live Session Assistant",
+    page_icon="🩺",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
+# Full-bleed: hide Streamlit chrome and stretch the component iframe to the viewport.
+st.markdown(
+    """
+<style>
+#MainMenu, header, footer,
+[data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
+    display: none !important;
+}
+[data-testid="stAppViewContainer"] { background: #eef1f6; }
+.block-container,
+[data-testid="stMainBlockContainer"],
+[data-testid="stAppViewBlockContainer"] {
+    padding: 0 !important;
+    max-width: 100% !important;
+}
+[data-testid="stVerticalBlock"] { gap: 0 !important; }
+iframe { display: block; border: none; width: 100%; height: 100vh !important; }
+[data-testid="stElementContainer"]:has(iframe),
+[data-testid="element-container"]:has(iframe) { height: 100vh !important; }
+</style>
+""",
+    unsafe_allow_html=True,
+)
 
 if not settings.app_password:
     logger.warning("APP_PASSWORD is not set — the app is running without authentication.")
@@ -43,11 +67,9 @@ def check_authentication() -> bool:
         return True
     if st.session_state.get("authenticated"):
         return True
-
     st.title("🔒 Sign in")
     password = st.text_input("Password", type="password", key="auth_password")
     if st.button("Sign in"):
-        # Constant-time comparison to avoid leaking the password via timing.
         if hmac.compare_digest(password, settings.app_password):
             st.session_state.authenticated = True
             st.rerun()
@@ -55,466 +77,124 @@ def check_authentication() -> bool:
             st.error("Incorrect password.")
     return False
 
-# Page configuration
-st.set_page_config(
-    page_title="Live Session Assistant",
-    page_icon="🩺",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
 
-# Hide default Streamlit chrome and apply light layout polish.
-st.markdown("""
-<style>
-#MainMenu, footer, header {visibility: hidden;}
-.block-container {padding-top: 2.5rem; max-width: 1200px;}
-[data-testid="stChatMessage"] {padding: 0.2rem 0;}
-[data-testid="stMetric"] {background: var(--secondary-background-color, #F4F7F6);
-    border-radius: 10px; padding: 10px 14px;}
-</style>
-""", unsafe_allow_html=True)
-
-# Initialize session state
-if "page" not in st.session_state:
-    st.session_state.page = "landing"
-if "conversation" not in st.session_state:
-    st.session_state.conversation = []
-if "conversation_model" not in st.session_state:
-    st.session_state.conversation_model = Conversation(
-        session_id=str(uuid.uuid4()), patient_id="test_patient", messages=[]
-    )
-if "patient_profile" not in st.session_state:
-    st.session_state.patient_profile = {}
-if "session_risk_flags" not in st.session_state:
-    st.session_state.session_risk_flags = []
-if "session_topics" not in st.session_state:
-    st.session_state.session_topics = []
-if "session_suggestions" not in st.session_state:
-    st.session_state.session_suggestions = []
-
-
-def _parse_lines(text):
-    """Split a textarea value into a clean list of non-empty, stripped lines."""
-    return [line.strip() for line in (text or "").splitlines() if line.strip()]
-
-
-# Seeded demo patients so the tool can be tried without setup.
-DEMO_PERSONAS = {
-    "Alex — anxiety": {
-        "patient_id": "demo_alex",
-        "medical_history": ["generalized anxiety disorder", "chronic insomnia"],
-        "therapy_goals": ["improve sleep", "reduce daily anxiety"],
-    },
-    "Jordan — grief": {
-        "patient_id": "demo_jordan",
-        "medical_history": ["recent bereavement", "low mood"],
-        "therapy_goals": ["process grief", "re-engage with daily life"],
-    },
-    "Sam — work stress": {
-        "patient_id": "demo_sam",
-        "medical_history": ["burnout", "work-related stress"],
-        "therapy_goals": ["set boundaries", "manage workload stress"],
-    },
-}
-
-# One-click PATIENT turns that walk a distress -> crisis -> recovery arc in a demo.
-SUGGESTED_PROMPTS = [
-    {"label": "Share distress", "text": "I've been really anxious lately and I can't sleep at all"},
-    {"label": "Express a crisis", "text": "Honestly, sometimes I feel like I want to end it all"},
-    {"label": "Show improvement", "text": "Talking this through actually helps — thank you"},
-]
-
-# Session-scoped keys cleared between sessions.
-_SESSION_KEYS = (
-    "conversation", "conversation_model", "patient_profile", "session_risk_flags",
-    "session_topics", "session_suggestions", "latest_suggestions", "latest_analysis",
-    "history_summary", "doctor_notes_input", "demo_mode",
-)
-
-
-def _new_live_session(patient_id):
-    """Reset per-session state and start a fresh transcript for a patient."""
-    st.session_state.conversation = []
-    st.session_state.conversation_model = Conversation(
-        session_id=str(uuid.uuid4()), patient_id=patient_id, messages=[]
-    )
-    st.session_state.session_risk_flags = []
-    st.session_state.session_topics = []
-    st.session_state.session_suggestions = []
-    for k in ("latest_suggestions", "latest_analysis", "history_summary", "doctor_notes_input"):
-        st.session_state.pop(k, None)
-
-
-def start_demo(persona):
-    """Begin a self-serve demo with a seeded persona (in-memory, no DB writes)."""
-    st.session_state.demo_mode = True
-    st.session_state.patient_profile = {
-        "patient_id": persona["patient_id"],
-        "medical_history": list(persona["medical_history"]),
-        "therapy_goals": list(persona["therapy_goals"]),
-    }
-    _new_live_session(persona["patient_id"])
-    st.session_state.page = "chat"
-    st.rerun()
-
-
-def reset_session():
-    """Clear the session and return to the landing page."""
-    for key in _SESSION_KEYS + ("page",):
-        st.session_state.pop(key, None)
-    st.rerun()
-
-
-def _load_history_summary():
-    try:
-        pid = st.session_state.conversation_model.patient_id
-        sid = st.session_state.conversation_model.session_id
-        sessions = [s for s in get_patient_sessions(pid) if s.get("session_id") != sid]
-        return build_history_summary(sessions)
-    except Exception:
-        logger.exception("Failed to load patient history summary")
-        return "(no prior sessions)"
-
-
-def _format_signals(analysis):
-    a = analysis or {}
-    urgency = a.get("urgency") or {}
-    sp = a.get("safety_protocol")
-    return "; ".join([
-        f"topic: {a.get('predicted_topic')} ({a.get('topic_confidence')})",
-        f"sentiment: {a.get('sentiment')} ({a.get('sentiment_score')})",
-        f"emotion: {urgency.get('label')} ({urgency.get('score')})",
-        f"crisis flag: {(sp.get('flag_type') + '/' + sp.get('action')) if sp else 'none'}",
-    ])
-
-
-def _persist_session():
-    """Archive the transcript + session log unless this is an in-memory demo.
-
-    Persistence failures are recorded in session state (not silently dropped)
-    so the clinician is warned that the turn may not have been saved — this
-    runs right before ``st.rerun()``, so a warning shown here would be lost.
-    """
-    if st.session_state.get("demo_mode"):
-        return
-    failed = False
-    try:
-        archive_conversation(st.session_state.conversation_model)
-    except Exception:
-        logger.exception("Failed to archive conversation")
-        failed = True
-    try:
-        latest = st.session_state.get("latest_analysis") or {}
-        archive_session(SessionLog(
-            session_id=st.session_state.conversation_model.session_id,
-            patient_id=st.session_state.conversation_model.patient_id,
-            detected_topics=st.session_state.session_topics,
-            risk_flags=st.session_state.session_risk_flags,
-            sentiment_score=float(latest.get("sentiment_score") or 0.0),
-            doctor_notes=st.session_state.get("doctor_notes_input", ""),
-            suggestions=st.session_state.get("session_suggestions", []),
-        ))
-    except Exception:
-        logger.exception("Failed to archive session log")
-        failed = True
-    st.session_state["persist_error"] = failed
-
-
-def _run_assistant(patient_text):
-    """Analyze a patient turn and generate decision-support for the doctor."""
-    transcript = "\n".join(
-        f"{m.get('speaker', 'patient').capitalize()}: {m['content']}"
-        for m in st.session_state.conversation
-    )
-    doctor_questions = "\n".join(
-        m["content"] for m in st.session_state.conversation if m.get("speaker") == "doctor"
-    ) or "(none yet)"
-
-    if "history_summary" not in st.session_state:
-        st.session_state.history_summary = _load_history_summary()
-
-    analysis = {"safety_protocol": _safety_checker.check_input(patient_text)}
-    suggestions = {}
-    try:
-        with st.status("Analyzing the patient turn…", expanded=True) as status:
-            analysis = analyze_message(patient_text, st.session_state.patient_profile, transcript)
-            sp = analysis.get("safety_protocol")
-            st.write(f"Safety: {sp['action'] + ' — ' + sp['flag_type'] if sp else 'no crisis indicators'}")
-            urgency = analysis.get("urgency") or {}
-            st.write(
-                f"Emotion: {urgency.get('label') or 'neutral'} · "
-                f"Topic: {analysis.get('predicted_topic') or 'n/a'} · "
-                f"Sentiment: {analysis.get('sentiment') or 'n/a'}"
-            )
-            st.write(f"Retrieved {len(analysis.get('historical_examples') or [])} similar case(s).")
-            degraded = analysis.get("errors") or []
-            if degraded:
-                st.write(f"⚠️ Degraded — unavailable: {', '.join(degraded)}")
-            status.update(label="Generating decision support…")
-            suggestions = generate_session_suggestions(
-                transcript=transcript,
-                patient_summary=build_patient_summary(st.session_state.patient_profile),
-                history_summary=st.session_state.history_summary,
-                signals=_format_signals(analysis),
-                examples=analysis.get("historical_examples"),
-                doctor_questions=doctor_questions,
-            )
-            if suggestions.get("_error"):
-                status.update(label="Decision support unavailable — model error",
-                              state="error", expanded=False)
-            elif degraded:
-                status.update(label="Decision support ready (degraded analysis)",
-                              state="complete", expanded=False)
-            else:
-                status.update(label="Decision support ready", state="complete", expanded=False)
-    except Exception:
-        logger.exception("Assistant generation error")
-        st.error("The assistant hit an unexpected error analyzing this turn. "
-                 "The deterministic safety check (shown above, if any) still applies.")
-
-    st.session_state.latest_analysis = analysis
-    st.session_state.latest_suggestions = suggestions
-
-    analytics = {
-        "topic": analysis.get("predicted_topic"),
-        "topic_confidence": analysis.get("topic_confidence"),
-        "sentiment": analysis.get("sentiment"),
-        "sentiment_score": analysis.get("sentiment_score"),
-        "safety_protocol": analysis.get("safety_protocol"),
-        "urgency": analysis.get("urgency"),
-        # Session-state only (not archived) for the "why" panel.
-        "historical_examples": analysis.get("historical_examples"),
-        "analysis_context": analysis.get("analysis_context"),
-    }
-    # Attach analytics to the patient turn (feeds the metrics dashboard).
-    if st.session_state.conversation:
-        st.session_state.conversation[-1]["analysis"] = analytics
-    lean = {k: analytics.get(k) for k in
-            ("topic", "topic_confidence", "sentiment", "sentiment_score", "safety_protocol", "urgency")}
-    if st.session_state.conversation_model.messages:
-        st.session_state.conversation_model.messages[-1].metadata = lean
-
-    # Audit trail entry.
-    st.session_state.session_suggestions.append({
-        "turn": patient_text,
-        "suggestions": {k: suggestions.get(k) for k in
-                        ("emotional_state", "next_questions", "red_flags", "missing_info", "follow_ups")},
-        "safety": analytics.get("safety_protocol"),
-    })
-
-    # Roll up distinct risk flags + topics for the session.
-    protocol = analytics.get("safety_protocol")
-    flag_type = protocol.get("flag_type") if protocol else None
-    if flag_type and flag_type not in st.session_state.session_risk_flags:
-        st.session_state.session_risk_flags.append(flag_type)
-    topic = analytics.get("topic")
-    if topic and topic not in st.session_state.session_topics:
-        st.session_state.session_topics.append(topic)
-
-
-def handle_turn(content, speaker):
-    """Append a transcript turn. Patient turns trigger the assistant; doctor
-    turns are logged as context only."""
-    is_patient = speaker == "patient"
-    st.session_state.conversation.append({"speaker": speaker, "content": content})
-    st.session_state.conversation_model.add_message(
-        Message(content=content, is_user=is_patient, speaker=speaker)
-    )
-    if is_patient:
-        _run_assistant(content)
-    _persist_session()
-    st.rerun()
-
-
-# Landing Page
-def landing_page():
-    st.markdown("""
-        <div style='text-align:center; padding:16px;'>
-            <h1>🩺 Live Session Assistant</h1>
-            <p style='font-size:17px;'>
-                A real-time co-pilot for mental-health clinicians. Enter a patient ID to load their
-                history, then log the live session — the assistant suggests the patient's likely state,
-                next questions to ask, follow-ups, and red flags.
-                <br><br><b>Decision support only — not a diagnosis. The clinician stays in control.</b>
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    patient_id = st.text_input("Patient ID", key="patient_id_input")
-    medical_history_input = st.text_area(
-        "Clinical history (optional, one item per line)", key="medical_history_input"
-    )
-    therapy_goals_input = st.text_area(
-        "Therapy goals (optional, one item per line)", key="therapy_goals_input"
-    )
-
-    if st.button("Open session"):
-        patient_id = patient_id.strip()
-        if not patient_id:
-            st.error("Please enter a patient ID before starting.")
-            return
-
-        medical_history = _parse_lines(medical_history_input)
-        therapy_goals = _parse_lines(therapy_goals_input)
-
-        try:
-            profile = get_patient_profile(patient_id)
-            if profile is None:
-                profile = create_patient_profile(
-                    patient_id, medical_history=medical_history, therapy_goals=therapy_goals,
-                )
-            elif (medical_history and not profile.medical_history) or (
-                therapy_goals and not profile.therapy_goals
-            ):
-                profile = update_patient_fields(
-                    patient_id,
-                    medical_history=medical_history or profile.medical_history,
-                    therapy_goals=therapy_goals or profile.therapy_goals,
-                )
-        except Exception:
-            logger.exception("Failed to load or create patient profile")
-            st.error("Could not load the patient profile. Please try again later.")
-            return
-
-        st.session_state.demo_mode = False
-        st.session_state.patient_profile = profile.dict()
-        _new_live_session(patient_id)
-        st.session_state.page = "chat"
-        st.rerun()
-
-    st.divider()
-    st.markdown("#### Or try a live demo")
-    st.caption("Explore the assistant with a sample patient — no patient ID or setup needed.")
-    demo_cols = st.columns(len(DEMO_PERSONAS))
-    for i, (name, persona) in enumerate(DEMO_PERSONAS.items()):
-        if demo_cols[i].button(name, key=f"demo_persona_{i}", use_container_width=True):
-            start_demo(persona)
-
-
-# Chat Page
-def chat_page():
-    st.title("🩺 Live Session Assistant")
-    st.caption("Decision support for the clinician — not a diagnosis. You stay in control.")
-
-    # Surface a persistence failure from the previous turn (set just before the
-    # rerun that brought us here, so it could not be shown inline).
-    if st.session_state.pop("persist_error", False):
-        st.warning("⚠️ The last turn may not have been saved to the database. "
-                   "Check the patient profile exists and the database is reachable.")
-
-    ctrl_left, ctrl_right = st.columns([3, 1])
-    if st.session_state.get("demo_mode"):
-        ctrl_left.caption("Demo mode — sample patient, nothing is saved.")
-    if ctrl_right.button("New session", use_container_width=True):
-        reset_session()
-
-    render_patient_overview(
-        st.session_state.conversation_model.patient_id,
-        st.session_state.get("patient_profile") or {},
-        exclude_session_id=st.session_state.conversation_model.session_id,
-    )
-    st.divider()
-
-    col_chat, col_dash = st.columns([1.3, 1], gap="large")
-
-    with col_chat:
-        st.markdown("##### Live transcript")
-        for msg in st.session_state.conversation:
-            speaker = msg.get("speaker") or ("patient" if msg.get("role") == "user" else "doctor")
-            avatar = "🩺" if speaker == "doctor" else "🧑"
-            with st.chat_message(speaker, avatar=avatar):
-                st.markdown(f"**{speaker.capitalize()}:** {msg['content']}")
-
-        if st.session_state.get("demo_mode"):
-            st.caption("Quick demo patient turns")
-            prompt_cols = st.columns(len(SUGGESTED_PROMPTS))
-            for i, prompt in enumerate(SUGGESTED_PROMPTS):
-                if prompt_cols[i].button(prompt["label"], key=f"suggested_{i}", use_container_width=True):
-                    handle_turn(prompt["text"], "patient")
-
-    with col_dash:
-        st.markdown("##### Session assistant")
-        render_suggestions(
-            st.session_state.get("latest_suggestions") or {},
-            st.session_state.get("latest_analysis") or {},
-        )
-        with st.expander("Session metrics", expanded=False):
-            render_dashboard(st.session_state.conversation, st.session_state.get("patient_profile") or {})
-
-        st.text_area("Doctor notes", key="doctor_notes_input", height=100,
-                     placeholder="Your observations, overrides, plan…")
-
-        audit = st.session_state.get("session_suggestions") or []
-        if audit:
-            with st.expander(f"Assistant audit trail ({len(audit)})"):
-                for i, entry in enumerate(audit, 1):
-                    s = entry.get("suggestions") or {}
-                    st.markdown(f"**Turn {i}** — _{(entry.get('turn') or '')[:60]}_")
-                    if s.get("emotional_state"):
-                        st.caption(f"state: {s['emotional_state']}")
-                    if s.get("next_questions"):
-                        st.caption("asked to consider: " + " | ".join(s["next_questions"][:3]))
-                    if entry.get("safety"):
-                        st.caption(f"safety: {entry['safety'].get('flag_type')}")
-
-    # Two-channel input: choose the speaker, then log the turn.
-    speaker_label = st.radio("Log turn as", ["Patient", "Doctor"], horizontal=True, key="speaker_select")
-    turn = st.chat_input(f"Log what the {speaker_label.lower()} said…")
-    if turn:
-        handle_turn(turn, "patient" if speaker_label == "Patient" else "doctor")
-
-    with st.expander("Generate end-of-session report"):
-        if st.button("Generate report", key="exit_button"):
-            with st.spinner("Generating the session report…"):
-                try:
-                    # Classify over the patient's own turns (the doctor's
-                    # questions would skew topic/sentiment).
-                    patient_text = "\n".join(
-                        m["content"] for m in st.session_state.conversation
-                        if m.get("speaker") == "patient"
-                    ) or "\n".join(m["content"] for m in st.session_state.conversation)
-                    classifier = load_topic_classifier()
-                    predicted_topic, topic_confidence = predict_topic(patient_text, classifier)
-                    sentiment, sentiment_score = analyze_sentiment(patient_text)
-
-                    # Carry the safety signals accumulated DURING the session
-                    # into the report — a crisis flagged earlier must not vanish.
-                    risk_flags = st.session_state.get("session_risk_flags") or []
-                    topics = st.session_state.get("session_topics") or []
-                    notes = st.session_state.get("doctor_notes_input", "")
-                    prompt = (
-                        f"Patient Session Report:\n"
-                        f"Topic: {predicted_topic} (Confidence: {topic_confidence:.2f})\n"
-                        f"Topics observed this session: {', '.join(topics) or 'n/a'}\n"
-                        f"Overall Sentiment: {sentiment} (Score: {sentiment_score})\n"
-                        f"Risk flags raised this session: {', '.join(risk_flags) or 'none'}\n"
-                        f"Clinician notes: {notes or '(none)'}\n\n"
-                        "Provide a structured clinician-facing session summary with sections:\n"
-                        "1. **Presentation & key themes**\n"
-                        "2. **Areas of concern / risk** — explicitly address every risk flag listed above.\n"
-                        "3. **Suggested follow-up** (for the clinician to consider; not prescriptive).\n"
-                        "Use clear headings and bullet points. Do not diagnose or prescribe."
-                    )
-                    recommendations_obj = generate_advice(prompt)
-                    recommendations = (recommendations_obj if isinstance(recommendations_obj, str)
-                                       else str(recommendations_obj))
-                    st.divider()
-                    st.subheader("📝 Session report")
-                    st.markdown(f"**Predicted topic:** {predicted_topic} · **Confidence:** {topic_confidence:.2f}")
-                    st.markdown(f"**Overall sentiment:** {sentiment} ({sentiment_score})")
-                    if risk_flags:
-                        st.error("**Risk flags raised this session:** " + ", ".join(risk_flags))
-                    st.markdown(recommendations)
-                except Exception:
-                    logger.exception("Error generating report")
-                    st.error("An error occurred while generating the report. Please try again later.")
-
-
-# Main Navigation
 if not check_authentication():
     st.stop()
 
-if st.session_state.page == "landing":
-    landing_page()
-elif st.session_state.page == "chat":
-    chat_page()
+# Bidirectional component wrapping the prototype.
+_COMPONENT_DIR = Path(__file__).parent / "cockpit_component"
+_lsa_cockpit = components.declare_component("lsa_cockpit", path=str(_COMPONENT_DIR))
+
+# Demo patient profile — matches the cockpit's PT-0042 overview card so the real
+# pipeline's grounding is consistent with what the clinician sees.
+_DEMO_PROFILE = {
+    "patient_id": "PT-0042",
+    "medical_history": ["generalized anxiety disorder", "panic attacks"],
+    "therapy_goals": ["reduce daily anxiety", "manage panic episodes"],
+}
+
+
+def _fmt_score(n) -> str:
+    try:
+        n = float(n)
+    except (TypeError, ValueError):
+        return "0.00"
+    return ("+%.2f" % n) if n >= 0 else ("%.2f" % n)
+
+
+def _run_real_turn(text: str, transcript: str) -> dict:
+    """Run the real analysis + decision-support pipeline for one patient turn and
+    shape it into the payload the prototype's React component expects."""
+    from unified_guidance import analyze_message
+    from session_assistant import generate_session_suggestions
+    from patient_overview import build_patient_summary
+
+    analysis = analyze_message(text, _DEMO_PROFILE, transcript)
+    urgency = analysis.get("urgency") or {}
+    sp = analysis.get("safety_protocol")
+
+    emotion = urgency.get("label") or "neutral"
+    e_score = urgency.get("score") or 0.0
+    sentiment = (analysis.get("sentiment") or "neutral").lower()
+    s_score = analysis.get("sentiment_score") or 0.0
+    topic = analysis.get("predicted_topic") or "general"
+    t_conf = analysis.get("topic_confidence") or 0.0
+
+    signals = (
+        f"topic: {topic} ({t_conf}); sentiment: {sentiment} ({s_score}); "
+        f"emotion: {emotion} ({e_score}); "
+        f"crisis flag: {(sp.get('flag_type') + '/' + sp.get('action')) if sp else 'none'}"
+    )
+    suggestions = generate_session_suggestions(
+        transcript=transcript,
+        patient_summary=build_patient_summary(_DEMO_PROFILE),
+        history_summary="(no prior sessions in this demo)",
+        signals=signals,
+        examples=analysis.get("historical_examples"),
+        doctor_questions="(see transcript)",
+    )
+
+    why_signals = [
+        {"k": "Emotion (DistilRoBERTa)", "v": f"{emotion} · {round(float(e_score) * 100)}%"},
+        {"k": "Sentiment (RoBERTa)", "v": f"{sentiment} · {_fmt_score(s_score)}"},
+        {"k": "Topic (BART zero-shot)", "v": f"{topic} · {round(float(t_conf) * 100)}%"},
+        {"k": "Crisis screen", "v": (f"{sp['flag_type']} · {sp['action']}") if sp else "clear"},
+    ]
+    cases = [
+        {
+            "id": str(ex.get("questionID") or ex.get("id") or "—"),
+            "sim": "",
+            "q": (ex.get("questionText") or "")[:200],
+            "a": (ex.get("answerText") or "")[:200],
+        }
+        for ex in (analysis.get("historical_examples") or [])[:3]
+    ]
+
+    return {
+        "analysis": {
+            "emotion": emotion,
+            "emotionScore": float(e_score),
+            "sentiment": sentiment,
+            "sentimentScore": float(s_score),
+            "topic": topic,
+            "topicConf": float(t_conf),
+        },
+        "suggestions": {
+            k: suggestions.get(k)
+            for k in ("emotional_state", "state_confidence", "red_flags",
+                      "missing_info", "next_questions", "follow_ups", "caveat")
+        },
+        "why": {"signals": why_signals, "cases": cases,
+                "context": analysis.get("analysis_context") or ""},
+        "crisis": ({"flag_type": sp["flag_type"], "action": sp["action"], "response": sp["response"]}
+                   if sp else None),
+        "errors": analysis.get("errors") or [],
+    }
+
+
+_ERROR_RESULT = {
+    "analysis": {"emotion": "neutral", "emotionScore": 0.0, "sentiment": "neutral",
+                 "sentimentScore": 0.0, "topic": "general", "topicConf": 0.0},
+    "suggestions": {"emotional_state": "", "state_confidence": "low", "red_flags": [],
+                    "missing_info": [], "next_questions": [], "follow_ups": [],
+                    "caveat": "The analysis pipeline errored for this turn."},
+    "why": {"signals": [], "cases": [], "context": ""},
+    "crisis": None,
+}
+
+# Render the component, passing the most recent result back to the iframe.
+payload = _lsa_cockpit(result=st.session_state.get("lsa_result"), key="lsa_cockpit", default=None)
+
+# A new patient turn arrived from the iframe — run the real pipeline and push it back.
+if isinstance(payload, dict) and payload.get("kind") == "patient_turn":
+    nonce = payload.get("nonce")
+    if nonce is not None and nonce != st.session_state.get("lsa_handled_nonce"):
+        st.session_state["lsa_handled_nonce"] = nonce
+        try:
+            result = _run_real_turn(payload.get("text", ""), payload.get("transcript", ""))
+        except Exception:
+            logger.exception("Real pipeline failed for a patient turn")
+            result = dict(_ERROR_RESULT)
+        result["nonce"] = nonce
+        st.session_state["lsa_result"] = result
+        st.rerun()

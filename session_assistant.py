@@ -100,78 +100,36 @@ def generate_session_suggestions(transcript, patient_summary, history_summary,
         return out
 
 
-_CONF_LABEL = {
-    "high": "high confidence",
-    "medium": "medium confidence",
-    "low": "low confidence — treat as a hint",
-}
-
-
 def render_suggestions(data, analysis):
-    """Render the assistant panel: deterministic safety first, then LLM aids."""
+    """Render the cockpit decision-support panel + the grounding ('why') toggle.
+
+    The deterministic crisis banner is rendered separately (above the
+    transcript) by the app; here we show the LLM aids and degraded-state notes.
+    """
     import streamlit as st
+    import ui
     from explain import render_why
 
     data = data or {}
     analysis = analysis or {}
 
-    # 1. Deterministic safety — never depends on the LLM.
-    sp = analysis.get("safety_protocol")
-    if sp:
-        st.error(
-            f"Safety — {sp.get('action')}: {sp.get('flag_type')}. {sp.get('response', '')}"
-        )
+    st.markdown(
+        ui.decision_support(
+            state=data.get("emotional_state"),
+            confidence=data.get("state_confidence"),
+            red_flags=data.get("red_flags") or [],
+            missing=data.get("missing_info") or [],
+            questions=data.get("next_questions") or [],
+            follow_ups=data.get("follow_ups") or [],
+            caveat=data.get("caveat"),
+            error=bool(data.get("_error")),
+            degraded=analysis.get("errors") or [],
+        ),
+        unsafe_allow_html=True,
+    )
 
-    # Surface a degraded run instead of silently showing an empty panel.
-    if data.get("_error"):
-        st.warning(
-            "The assistant could not generate suggestions for this turn (model "
-            "error). The deterministic safety check above still applies."
-        )
-    degraded = analysis.get("errors") or []
-    if degraded:
-        st.caption("⚠️ Limited analysis — unavailable: " + ", ".join(degraded))
-
-    red = data.get("red_flags") or []
-    if red:
-        st.markdown("**Red flags / concerns**")
-        for item in red:
-            st.markdown(f"- {item}")
-
-    missing = data.get("missing_info") or []
-    if missing:
-        st.markdown("**Missing info to clarify**")
-        for item in missing:
-            st.markdown(f"- {item}")
-
-    state = data.get("emotional_state")
-    if state:
-        conf = _CONF_LABEL.get((data.get("state_confidence") or "low"), _CONF_LABEL["low"])
-        st.markdown(f"**Likely state** — {state}")
-        st.caption(conf)
-
-    questions = data.get("next_questions") or []
-    if questions:
-        st.markdown("**Next questions to consider**")
-        for q in questions:
-            st.markdown(f"- {q}")
-
-    follow_ups = data.get("follow_ups") or []
-    if follow_ups:
-        st.markdown("**Follow-up points**")
-        for item in follow_ups:
-            st.markdown(f"- {item}")
-
-    if data.get("caveat"):
-        st.caption(f"Note: {data['caveat']}")
     if data.get("_raw"):
         with st.expander("Raw assistant output (could not parse as JSON)"):
             st.code(data["_raw"])
 
-    if not any(data.get(k) for k in ("red_flags", "missing_info", "emotional_state",
-                                     "next_questions", "follow_ups")) and not sp \
-            and not data.get("_error"):
-        st.caption("No high-value suggestions for this turn.")
-
-    st.caption("Decision support — not a diagnosis. Clinical judgment required.")
     render_why(analysis)
