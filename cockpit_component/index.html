@@ -144,7 +144,7 @@
 
     <div style="display:flex;align-items:center;gap:8px;margin-left:6px;padding:5px 11px;background:#f4f6fa;border:1px solid #e3e8f2;border-radius:8px;">
       <span style="font:500 11px/1 'IBM Plex Mono',monospace;color:#8a93a8;">PATIENT</span>
-      <span style="font:600 13px/1 'IBM Plex Mono',monospace;color:#1a2235;letter-spacing:.01em;">PT-0042</span>
+      <span style="font:600 13px/1 'IBM Plex Mono',monospace;color:#1a2235;letter-spacing:.01em;">{{ patientId }}</span>
       <span style="width:6px;height:6px;border-radius:50%;background:#2f8f6b;margin-left:2px;box-shadow:0 0 0 3px rgba(47,143,107,.16);"></span>
       <span style="font-size:11.5px;font-weight:600;color:#2f8f6b;">Session live</span>
     </div>
@@ -178,12 +178,12 @@
 
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
           <div>
-            <div style="font:600 19px/1 'IBM Plex Mono',monospace;letter-spacing:.01em;">PT-0042</div>
-            <div style="font-size:12.5px;color:#647089;margin-top:4px;">34 · returning patient</div>
+            <div style="font:600 19px/1 'IBM Plex Mono',monospace;letter-spacing:.01em;">{{ patientId }}</div>
+            <div style="font-size:12.5px;color:#647089;margin-top:4px;">{{ patientSubtitle }}</div>
           </div>
           <div style="display:flex;gap:8px;">
             <div style="text-align:center;background:#f4f6fa;border:1px solid #e6eaf2;border-radius:8px;padding:7px 10px;">
-              <div style="font:600 17px/1 'IBM Plex Mono',monospace;">3</div>
+              <div style="font:600 17px/1 'IBM Plex Mono',monospace;">{{ patientSessions }}</div>
               <div style="font-size:9.5px;color:#8a93a8;margin-top:3px;letter-spacing:.02em;">SESSIONS</div>
             </div>
           </div>
@@ -192,22 +192,24 @@
         <div style="margin-top:15px;">
           <div style="font-size:10.5px;font-weight:600;color:#8a93a8;letter-spacing:.04em;margin-bottom:7px;">CLINICAL HISTORY</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;">
-            <span style="font:500 11.5px/1 'IBM Plex Mono',monospace;background:#f0f3f9;color:#4a5670;padding:5px 8px;border-radius:6px;">generalized anxiety disorder</span>
-            <span style="font:500 11.5px/1 'IBM Plex Mono',monospace;background:#f0f3f9;color:#4a5670;padding:5px 8px;border-radius:6px;">panic attacks</span>
+            <sc-for list="{{ patientHistory }}" as="h" hint-placeholder-count="2">
+              <span style="font:500 11.5px/1 'IBM Plex Mono',monospace;background:#f0f3f9;color:#4a5670;padding:5px 8px;border-radius:6px;">{{ h }}</span>
+            </sc-for>
           </div>
         </div>
 
         <div style="margin-top:14px;">
           <div style="font-size:10.5px;font-weight:600;color:#8a93a8;letter-spacing:.04em;margin-bottom:7px;">THERAPY GOALS</div>
           <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;">
-            <li style="display:flex;gap:8px;font-size:13px;color:#3a4458;"><span style="color:{{ accent }};">›</span>reduce daily anxiety</li>
-            <li style="display:flex;gap:8px;font-size:13px;color:#3a4458;"><span style="color:{{ accent }};">›</span>manage panic episodes</li>
+            <sc-for list="{{ patientGoals }}" as="g" hint-placeholder-count="2">
+              <li style="display:flex;gap:8px;font-size:13px;color:#3a4458;"><span style="color:{{ accent }};">›</span>{{ g }}</li>
+            </sc-for>
           </ul>
         </div>
 
         <div style="margin-top:15px;padding-top:13px;border-top:1px dashed #e3e8f2;display:flex;justify-content:space-between;font-size:12px;">
           <span style="color:#8a93a8;">Last seen</span>
-          <span style="font-weight:600;color:#3a4458;font-family:'IBM Plex Mono',monospace;">2026-05-28 · 25d ago</span>
+          <span style="font-weight:600;color:#3a4458;font-family:'IBM Plex Mono',monospace;">{{ patientLastSeen }}</span>
         </div>
       </div>
 
@@ -501,7 +503,7 @@
         <div style="position:sticky;top:0;background:#fff;padding:20px 24px 16px;border-bottom:1px solid #eef1f6;display:flex;align-items:center;justify-content:space-between;">
           <div>
             <div style="font-weight:700;font-size:17px;">End-of-session report</div>
-            <div style="font:500 11px/1 'IBM Plex Mono',monospace;color:#8a93a8;margin-top:5px;">PT-0042 · {{ clock }} · {{ turnCount }} turns logged</div>
+            <div style="font:500 11px/1 'IBM Plex Mono',monospace;color:#8a93a8;margin-top:5px;">{{ patientId }} · {{ clock }} · {{ turnCount }} turns logged</div>
           </div>
           <button onClick="{{ closeReport }}" style="cursor:pointer;border:1px solid #e3e8f2;background:#f4f6fa;width:30px;height:30px;border-radius:8px;font-size:16px;color:#647089;">×</button>
         </div>
@@ -672,10 +674,21 @@ class Component extends DCLogic {
       view: "launch",
       launchId: "PT-0042",
       launchError: "",
+      loadingPatient: false,
       trajectory: [-0.54],
       elapsed: 0,
       stages: this.doneStages(false),
       running: false,
+      // Patient context — defaults to the PT-0042 demo; replaced by the real
+      // record (from MongoDB) when a non-demo patient is opened.
+      patient: {
+        id: "PT-0042", subtitle: "34 · returning patient", sessionCount: 3,
+        history: ["generalized anxiety disorder", "panic attacks"],
+        goals: ["reduce daily anxiety", "manage panic episodes"],
+        lastSeen: "2026-05-28 · 25d ago",
+      },
+      realTimeline: null,  // null -> use the demo timeline; array -> real prior sessions
+      roster: null,        // null -> demo recents; array -> real recent patients
     };
   }
 
@@ -872,7 +885,12 @@ class Component extends DCLogic {
       suggestions: null, why: null, whyOpen: null, running: true,
     }));
     if (window.Streamlit && window.Streamlit.setComponentValue) {
-      window.Streamlit.setComponentValue({ nonce: nonce, kind: "patient_turn", text: text, transcript: transcript });
+      const msgs = this.state.messages.concat([{ speaker: "patient", text: text }])
+        .map(m => ({ speaker: m.speaker, text: m.text }));
+      window.Streamlit.setComponentValue({
+        nonce: nonce, kind: "patient_turn", text: text, transcript: transcript,
+        messages: msgs, notes: this.state.notes,
+      });
     } else {
       // Fallback to the local mock pipeline when opened outside Streamlit.
       const crisis = this.checkSafety(text);
@@ -880,12 +898,34 @@ class Component extends DCLogic {
     }
   };
 
-  // Apply a real pipeline result pushed from Python (matched by nonce).
+  // Apply server pushes from Python: the real recent-patient roster, a patient
+  // record (open), or a turn's analysis — all matched by nonce.
   applyServerArgs(args) {
-    if (!args || !args.result) return;
+    if (!args) return;
+    if (args.roster && !this._rosterSet) { this._rosterSet = true; this.setState({ roster: args.roster }); }
     const r = args.result;
-    if (r.nonce == null || r.nonce !== this._pendingNonce) return;
+    if (!r || r.nonce == null || r.nonce !== this._pendingNonce) return;
     this._pendingNonce = null;
+
+    if (r.kind === "open") {
+      if (!r.found) {
+        this.setState({ loadingPatient: false, launchError: r.error || ("No record found for " + (r.patientId || "that patient") + ".") });
+        return;
+      }
+      this._start = Date.now();
+      try { localStorage.setItem("lsa-session-start", String(this._start)); } catch (e) {}
+      // Start a fresh real session for the loaded patient (no scripted seed).
+      this.setState({
+        view: "session", elapsed: 0, launchError: "", loadingPatient: false,
+        patient: r.patient, realTimeline: r.timeline || [],
+        messages: [], suggestions: null, why: null, whyOpen: null,
+        crisisActive: null, trajectory: [], scriptIndex: this.SCRIPT.length,
+        stages: this.stageDefs().map(x => ({ ...x, status: "pending" })), running: false,
+      });
+      return;
+    }
+
+    // Default: a turn analysis result.
     const isCrisis = !!r.crisis;
     this.setState({ stages: this.doneStages(isCrisis), crisisActive: r.crisis || this.state.crisisActive });
     this.finishPipeline({ analysis: r.analysis, suggestions: r.suggestions, why: r.why, crisis: r.crisis || null });
@@ -912,12 +952,26 @@ class Component extends DCLogic {
     try { localStorage.setItem("lsa-session-start", String(this._start)); } catch (e) {}
     this.setState({ view: "session", elapsed: 0, launchError: "" });
   };
+  // Load a real patient from MongoDB via the backend, then open their session.
+  openPatient = (id) => {
+    const pid = (id || "").trim().toUpperCase();
+    if (!pid) { this.setState({ launchError: "Enter a patient ID to continue." }); return; }
+    if (window.Streamlit && window.Streamlit.setComponentValue) {
+      const nonce = (this._nonce = (this._nonce || 0) + 1);
+      this._pendingNonce = nonce;
+      this.setState({ loadingPatient: true, launchError: "", launchId: pid });
+      window.Streamlit.setComponentValue({ nonce: nonce, kind: "open", patientId: pid });
+    } else {
+      this.setState({ launchError: "Loading a real patient requires the backend." });
+    }
+  };
   submitLaunch = () => {
     const id = (this.state.launchId || "").trim().toUpperCase();
-    if (id === "PT-0042") this.openSession();
-    else this.setState({ launchError: id ? `No scripted scenario for ${id} in this prototype — try PT-0042.` : "Enter a patient ID to continue." });
+    if (!id) { this.setState({ launchError: "Enter a patient ID to continue." }); return; }
+    if (id === "PT-0042") this.openSession();  // built-in scripted demo
+    else this.openPatient(id);
   };
-  seededNote = () => this.setState({ launchError: "Only PT-0042 has a scripted scenario in this prototype. The other patients are seeded for the real app." });
+  seededNote = () => this.openPatient(this.state.launchId);
   onLaunchId = (e) => this.setState({ launchId: e.target.value, launchError: "" });
   onLaunchKey = (e) => { if (e.key === "Enter") { e.preventDefault(); this.submitLaunch(); } };
   backToLaunch = () => this.setState({ view: "launch" });
@@ -935,17 +989,20 @@ class Component extends DCLogic {
     // ---- launch screen: personas + recents ----
     const pStyle = (en) => `cursor:pointer;text-align:left;border:${en ? "1.5px solid " + accent : "1px solid #e6eaf2"};background:${en ? accentSoft : "#fbfcfe"};border-radius:11px;padding:13px;font-family:inherit;${en ? "" : "opacity:.82;"}`;
     const pMeta = (en) => `font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.04em;padding:3px 7px;border-radius:5px;${en ? `background:${accent};color:#fff;` : "background:#eef1f6;color:#8a93a8;"}`;
+    const openByCard = (id) => (id === "PT-0042" ? this.openSession : (() => this.openPatient(id)));
     const personas = [
-      { id: "PT-0042", label: "Anxiety & panic", desc: "GAD · panic attacks", meta: "demo ready", en: true },
+      { id: "PT-0042", label: "Anxiety & panic", desc: "GAD · panic attacks", meta: "demo", en: true },
       { id: "PT-0017", label: "Depression", desc: "MDD · low mood", meta: "seeded", en: false },
       { id: "PT-0008", label: "Grief & loss", desc: "recent bereavement", meta: "seeded", en: false },
       { id: "PT-0023", label: "Trauma / PTSD", desc: "hypervigilance", meta: "seeded", en: false },
-    ].map(p => ({ ...p, style: pStyle(p.en), metaStyle: pMeta(p.en), onClick: p.en ? this.openSession : this.seededNote }));
-    const recents = [
-      { id: "PT-0042", last: "today · panic recurrence", flag: false, en: true },
-      { id: "PT-0031", last: "2026-06-12 · routine review", flag: false, en: false },
-      { id: "PT-0009", last: "2026-06-05 · risk flagged", flag: true, en: false },
-    ].map(r => ({ ...r, style: `cursor:pointer;display:flex;align-items:center;width:100%;text-align:left;border:none;background:transparent;padding:10px 6px;font-family:inherit;${r.en ? "" : "opacity:.72;"}`, onClick: r.en ? this.openSession : this.seededNote, arrow: r.en ? "›" : "" }));
+    ].map(p => ({ ...p, style: pStyle(p.en), metaStyle: pMeta(p.en), onClick: openByCard(p.id) }));
+    // Real recent patients from MongoDB when available; otherwise the demo list.
+    const recentRows = (this.state.roster && this.state.roster.length) ? this.state.roster : [
+      { id: "PT-0042", last: "today · panic recurrence (demo)", flag: false },
+      { id: "PT-0031", last: "2026-06-12 · routine review", flag: false },
+      { id: "PT-0009", last: "2026-06-05 · risk flagged", flag: true },
+    ];
+    const recents = recentRows.map(r => ({ ...r, style: `cursor:pointer;display:flex;align-items:center;width:100%;text-align:left;border:none;background:transparent;padding:10px 6px;font-family:inherit;`, onClick: openByCard(r.id), arrow: "›" }));
     const sg = this.state.suggestions || {};
     const s = this.state;
 
@@ -992,13 +1049,17 @@ class Component extends DCLogic {
       { date: "2026-04-30", topics: ["stress", "anxiety"], score: -0.61, flag: null },
       { date: "2026-03-18", topics: ["anxiety", "panic"], score: -0.78, flag: "suicide_risk" },
     ];
-    const timeline = tlRaw.map((t, i) => ({
-      date: t.date, topics: t.topics, score: this.fmtScore(t.score),
-      scoreStyle: `color:${t.score < -0.6 ? "#b23a31" : t.score < -0.3 ? "#b5862f" : "#647089"};`,
-      dotStyle: `width:10px;height:10px;border-radius:50%;flex:none;margin-top:3px;background:${t.flag ? "#c2362f" : i === 0 ? accent : "#c2cad8"};`,
-      lineStyle: i === tlRaw.length - 1 ? "display:none;" : "flex:1;width:1.5px;background:#e6eaf2;margin:3px 0;",
-      hasFlag: !!t.flag, flagText: t.flag ? "risk: " + t.flag : "",
-    }));
+    const tlSource = (s.realTimeline != null) ? s.realTimeline : tlRaw;
+    const timeline = tlSource.map((t, i) => {
+      const score = (typeof t.score === "number") ? t.score : 0;
+      return {
+        date: t.date, topics: t.topics || [], score: this.fmtScore(score),
+        scoreStyle: `color:${score < -0.6 ? "#b23a31" : score < -0.3 ? "#b5862f" : "#647089"};`,
+        dotStyle: `width:10px;height:10px;border-radius:50%;flex:none;margin-top:3px;background:${t.flag ? "#c2362f" : i === 0 ? accent : "#c2cad8"};`,
+        lineStyle: i === tlSource.length - 1 ? "display:none;" : "flex:1;width:1.5px;background:#e6eaf2;margin:3px 0;",
+        hasFlag: !!t.flag, flagText: t.flag ? "risk: " + t.flag : "",
+      };
+    });
 
     // pipeline stage views
     const stageStyle = (st) => {
@@ -1089,6 +1150,13 @@ class Component extends DCLogic {
       isLaunch: s.view === "launch", isSession: s.view === "session",
       launchId: s.launchId, launchError: s.launchError, hasLaunchError: !!s.launchError,
       personas, recents,
+      // Patient context (real record or PT-0042 demo).
+      patientId: (s.patient || {}).id || "—",
+      patientSubtitle: (s.patient || {}).subtitle || "",
+      patientSessions: ((s.patient || {}).sessionCount != null ? (s.patient || {}).sessionCount : 0),
+      patientHistory: (s.patient || {}).history || [],
+      patientGoals: (s.patient || {}).goals || [],
+      patientLastSeen: (s.patient || {}).lastSeen || "—",
       submitLaunch: this.submitLaunch, onLaunchId: this.onLaunchId, onLaunchKey: this.onLaunchKey, backToLaunch: this.backToLaunch,
       clock: `${mm}:${ss}`,
       msgViews, timeline,
