@@ -546,6 +546,19 @@
           </div>
 
           <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px;">
+              <div style="font-size:10.5px;font-weight:700;color:#8a93a8;letter-spacing:.05em;">CLINICAL SUMMARY · AI-GENERATED</div>
+              <button onClick="{{ regenerateReport }}" style="{{ reportBtnStyle }}">{{ reportBtnLabel }}</button>
+            </div>
+            <sc-if value="{{ reportPending }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;align-items:center;gap:7px;animation:softpulse 1.1s ease-in-out infinite;padding:6px 0;"><span style="width:6px;height:6px;border-radius:50%;background:#aab2c4;"></span><span style="font:500 11px/1 'IBM Plex Mono',monospace;color:#aab2c4;">generating clinician summary…</span></div>
+            </sc-if>
+            <sc-if value="{{ hasReportText }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#f7f9fc;border:1px solid #e6eaf2;border-radius:9px;padding:13px;font-size:13px;line-height:1.6;color:#2a3450;white-space:pre-wrap;">{{ reportText }}</div>
+            </sc-if>
+          </div>
+
+          <div>
             <div style="font-size:10.5px;font-weight:700;color:#8a93a8;letter-spacing:.05em;margin-bottom:9px;">CLINICIAN NOTES</div>
             <div style="background:#fbfcfe;border:1px solid #e6eaf2;border-radius:9px;padding:12px;font-size:13px;line-height:1.55;color:#3a4458;white-space:pre-wrap;">{{ report.notes }}</div>
           </div>
@@ -672,6 +685,8 @@ class Component extends DCLogic {
       notes: "",
       crisisActive: null,
       reportOpen: false,
+      reportText: "",      // Groq end-of-session summary (cached for the session)
+      reportPending: false,
       view: "launch",
       launchId: "PT-0042",
       launchError: "",
@@ -904,6 +919,7 @@ class Component extends DCLogic {
       draft: "",
       stages: this.stageDefs().map(x => ({ ...x, status: "pending" })),
       suggestions: null, why: null, whyOpen: null, running: true,
+      reportText: "",  // a new turn invalidates the cached end-of-session report
     }));
     if (window.Streamlit && window.Streamlit.setComponentValue) {
       const msgs = this.state.messages.concat([{ speaker: "patient", text: text }])
@@ -942,6 +958,7 @@ class Component extends DCLogic {
         patient: r.patient, realTimeline: r.timeline || [],
         messages: [], suggestions: null, why: null, whyOpen: null,
         crisisActive: null, trajectory: [], scriptIndex: this.SCRIPT.length,
+        reportText: "", reportPending: false,
         stages: this.stageDefs().map(x => ({ ...x, status: "pending" })), running: false,
       });
       return;
@@ -959,6 +976,11 @@ class Component extends DCLogic {
         }
         return { messages: msgs, running: false };
       });
+      return;
+    }
+
+    if (r.kind === "reportText") {
+      this.setState({ reportText: r.text || "(no summary)", reportPending: false });
       return;
     }
 
@@ -981,8 +1003,23 @@ class Component extends DCLogic {
   setSpeakerDoctor = () => this.setState({ speaker: "doctor" });
   setSpeakerAsk = () => this.setState({ speaker: "ask" });
   toggleWhy = () => this.setState(s => ({ whyOpen: !this.whyEffective() }));
-  openReport = () => this.setState({ reportOpen: true });
+  openReport = () => { this.setState({ reportOpen: true }); this.requestReport(false); };
   closeReport = () => this.setState({ reportOpen: false });
+  requestReport = (force) => {
+    if (this.state.reportPending) return;
+    if (this.state.reportText && !force) return;  // cached for this session
+    const nonce = (this._nonce = (this._nonce || 0) + 1);
+    this._pendingNonce = nonce;
+    const transcript = this.state.messages.map(m => this.cap(m.speaker) + ": " + m.text).join("\n");
+    this.setState({ reportPending: true });
+    if (window.Streamlit && window.Streamlit.setComponentValue) {
+      window.Streamlit.setComponentValue({ nonce: nonce, kind: "report", transcript: transcript, notes: this.state.notes });
+    } else {
+      setTimeout(() => this.applyServerArgs({ result: { nonce: nonce, kind: "reportText",
+        text: "(demo) Connect the backend to generate a clinician summary." } }), 300);
+    }
+  };
+  regenerateReport = () => this.requestReport(true);
   stop = (e) => { e.stopPropagation(); };
 
   openSession = () => {
@@ -1232,6 +1269,11 @@ class Component extends DCLogic {
 
       // report modal
       reportOpen: s.reportOpen, report,
+      reportText: s.reportText, reportPending: s.reportPending,
+      hasReportText: !s.reportPending && !!s.reportText,
+      reportBtnLabel: s.reportText ? "Regenerate" : "Generate",
+      reportBtnStyle: "cursor:pointer;border:1px solid #dde3ee;background:#f4f6fa;color:#3a4458;font-family:inherit;font-weight:600;font-size:11.5px;padding:5px 11px;border-radius:7px;",
+      regenerateReport: this.regenerateReport,
 
       // handlers
       advance: this.advance, send: this.send, onDraft: this.onDraft, onComposerKey: this.onComposerKey,
