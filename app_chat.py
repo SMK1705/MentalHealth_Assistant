@@ -331,3 +331,23 @@ if isinstance(payload, dict):
                 _archive(active, payload.get("messages"), payload.get("notes", ""), result)
             st.session_state["lsa_result"] = result
             st.rerun()
+
+        elif kind == "doctor_query":
+            # "Ask" mode: answer a clinician's free-form question grounded in the
+            # patient's record + sessions + corpus. Read-only (no archival).
+            active = st.session_state.get("lsa_active")
+            question = (payload.get("question") or "").strip()
+            if not question:
+                text = "Please enter a question for the assistant."
+            elif not active:  # PT-0042 demo opens client-side; no real record loaded
+                text = ("Open a real patient (e.g. PT-0001) to ask record-grounded questions. "
+                        "The scripted PT-0042 demo has no database-backed record.")
+            else:
+                try:
+                    from doctor_qa import answer_doctor_query
+                    text = answer_doctor_query(question, active, payload.get("transcript", ""))
+                except Exception:
+                    logger.exception("Doctor query failed")
+                    text = "The assistant could not answer that just now. Please try again."
+            st.session_state["lsa_result"] = {"nonce": nonce, "kind": "answer", "text": text}
+            st.rerun()

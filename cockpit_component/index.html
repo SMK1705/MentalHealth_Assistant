@@ -331,6 +331,35 @@
     <!-- ===== RIGHT: ASSISTANT ===== -->
     <section class="lsa-scroll" style="overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:14px;padding-right:4px;">
 
+      <!-- ASK THE ASSISTANT (dedicated Q&A panel, separate from the clinical transcript) -->
+      <div style="background:#fff;border:1px solid #dde3ee;border-radius:11px;padding:16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="width:3px;height:13px;border-radius:2px;background:{{ accent }};"></span>
+          <span style="font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#8a93a8;">ASK THE ASSISTANT</span>
+          <span style="margin-left:auto;font-size:10.5px;color:#aab2c4;">grounded in the record</span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input value="{{ askDraft }}" onInput="{{ onAskDraft }}" onKeyDown="{{ onAskKey }}" placeholder="{{ askPlaceholder }}" style="flex:1;min-width:0;border:1px solid #dde3ee;border-radius:8px;padding:10px 11px;font-family:inherit;font-size:13px;color:#1a2235;outline:none;background:#fbfcfe;" />
+          <button onClick="{{ submitAsk }}" style="{{ askSendStyle }}">Ask</button>
+        </div>
+        <sc-if value="{{ hasQa }}" hint-placeholder-val="{{ false }}">
+          <div class="lsa-scroll" style="margin-top:12px;max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ qaView }}" as="q" hint-placeholder-count="2">
+              <div style="border:1px solid #eef1f6;border-radius:9px;padding:10px 11px;background:#fbfcfe;">
+                <div style="font-size:12px;font-weight:600;color:#3a4458;display:flex;gap:7px;line-height:1.4;"><span style="color:{{ accent }};flex:none;">?</span>{{ q.question }}</div>
+                <sc-if value="{{ q.pending }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:8px;display:flex;align-items:center;gap:7px;animation:softpulse 1.1s ease-in-out infinite;"><span style="width:6px;height:6px;border-radius:50%;background:#aab2c4;"></span><span style="font:500 11px/1 'IBM Plex Mono',monospace;color:#aab2c4;">thinking…</span></div>
+                </sc-if>
+                <sc-if value="{{ q.hasAnswer }}" hint-placeholder-val="{{ true }}">
+                  <div style="margin-top:8px;font-size:12.5px;line-height:1.55;color:#2a3450;white-space:pre-wrap;">{{ q.answer }}</div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <div style="margin-top:11px;padding-top:10px;border-top:1px dashed #e3e8f2;font-size:11px;color:#9aa3b6;line-height:1.45;">Answers are grounded in the patient record, prior sessions, and the corpus — and kept out of the clinical transcript.</div>
+      </div>
+
       <!-- PIPELINE -->
       <sc-if value="{{ showPipeline }}" hint-placeholder-val="{{ true }}">
         <div style="background:#172033;border:1px solid #172033;border-radius:11px;padding:15px 16px;color:#cdd6e8;">
@@ -675,6 +704,8 @@ class Component extends DCLogic {
       launchId: "PT-0042",
       launchError: "",
       loadingPatient: false,
+      askDraft: "",       // "Ask the assistant" panel input
+      qa: [],             // [{id, question, answer, pending}]
       trajectory: [-0.54],
       elapsed: 0,
       stages: this.doneStages(false),
@@ -920,7 +951,20 @@ class Component extends DCLogic {
         patient: r.patient, realTimeline: r.timeline || [],
         messages: [], suggestions: null, why: null, whyOpen: null,
         crisisActive: null, trajectory: [], scriptIndex: this.SCRIPT.length,
+        qa: [], askDraft: "",
         stages: this.stageDefs().map(x => ({ ...x, status: "pending" })), running: false,
+      });
+      return;
+    }
+
+    if (r.kind === "answer") {
+      // Resolve the most recent pending Q&A entry in the Ask panel.
+      this.setState(s => {
+        const qa = s.qa.slice();
+        for (let j = qa.length - 1; j >= 0; j--) {
+          if (qa[j].pending) { qa[j] = { ...qa[j], pending: false, answer: r.text || "(no answer)" }; break; }
+        }
+        return { qa, running: false };
       });
       return;
     }
@@ -975,6 +1019,28 @@ class Component extends DCLogic {
   onLaunchId = (e) => this.setState({ launchId: e.target.value, launchError: "" });
   onLaunchKey = (e) => { if (e.key === "Enter") { e.preventDefault(); this.submitLaunch(); } };
   backToLaunch = () => this.setState({ view: "launch" });
+
+  // ---------- Ask-the-assistant panel ----------
+  onAskDraft = (e) => this.setState({ askDraft: e.target.value });
+  onAskKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); this.submitAsk(); } };
+  submitAsk = () => {
+    if (this.state.running) return;
+    const q = (this.state.askDraft || "").trim();
+    if (!q) return;
+    const nonce = (this._nonce = (this._nonce || 0) + 1);
+    this._pendingNonce = nonce;
+    const transcript = this.state.messages.map(m => this.cap(m.speaker) + ": " + m.text).join("\n");
+    this.setState(s => ({
+      qa: s.qa.concat([{ id: this.uid(), question: q, answer: "", pending: true }]),
+      askDraft: "", running: true,
+    }));
+    if (window.Streamlit && window.Streamlit.setComponentValue) {
+      window.Streamlit.setComponentValue({ nonce: nonce, kind: "doctor_query", question: q, transcript: transcript });
+    } else {
+      setTimeout(() => this.applyServerArgs({ result: { nonce: nonce, kind: "answer",
+        text: "(demo) The backend isn't connected, so I can't pull the record." } }), 300);
+    }
+  };
 
   whyEffective() {
     if (this.state.whyOpen === null) return !!(this.props.whyExpanded);
@@ -1185,6 +1251,15 @@ class Component extends DCLogic {
       // composer
       draft: s.draft, notes: s.notes,
       patientTabStyle, doctorTabStyle, composerPlaceholder, advanceStyle, advanceHint,
+
+      // ask-the-assistant panel
+      askDraft: s.askDraft,
+      hasQa: (s.qa || []).length > 0,
+      qaView: (s.qa || []).map(q => ({ id: q.id, question: q.question, answer: q.answer,
+        pending: !!q.pending, hasAnswer: !q.pending && !!q.answer })),
+      askPlaceholder: "e.g. details about the previous session",
+      askSendStyle: `cursor:pointer;border:none;background:${accent};color:#fff;font-family:inherit;font-weight:600;font-size:13px;padding:0 15px;border-radius:8px;flex:none;`,
+      onAskDraft: this.onAskDraft, onAskKey: this.onAskKey, submitAsk: this.submitAsk,
 
       // report modal
       reportOpen: s.reportOpen, report,
