@@ -73,3 +73,27 @@ DOCTOR_QA_TEMPLATE = (
     "- Be concise: a sentence or a few short markdown bullets. No preamble, no restating the "
     "question.\n"
 )
+
+
+# End-of-session clinician summary. Plain str.format template (no literal
+# braces). Reused by session_report.py.
+REPORT_TEMPLATE = (
+    "You are writing a concise END-OF-SESSION SUMMARY for a mental-health CLINICIAN, from THIS "
+    "live session and the patient's record. It is decision support — NOT a diagnosis or a "
+    "medical record.\n\n"
+    "PATIENT RECORD:\n{patient_summary}\n\n"
+    "PRIOR SESSIONS:\n{history_summary}\n\n"
+    "TOPICS OBSERVED THIS SESSION:\n{topics}\n\n"
+    "RISK FLAGS RAISED THIS SESSION (deterministic crisis screen):\n{risk_flags}\n\n"
+    "CLINICIAN NOTES:\n{notes}\n\n"
+    "SESSION TRANSCRIPT (doctor & patient, most recent last):\n{transcript}\n\n"
+    "Write a structured summary in markdown with exactly these three sections:\n"
+    "**Presentation & key themes** — what the patient brought and the main themes.\n"
+    "**Areas of concern / risk** — explicitly address every risk flag listed above; if there "
+    "are none, say so.\n"
+    "**Suggested follow-up** — concrete points for the clinician to consider next time.\n\n"
+    "RULES:\n"
+    "- Ground everything in the transcript and record above; do not invent facts.\n"
+    "- Do NOT diagnose or prescribe; phrase follow-ups as 'Consider...'.\n"
+    "- Be concise — a few short bullets under each heading.\n"
+)

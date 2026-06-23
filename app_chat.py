@@ -351,3 +351,19 @@ if isinstance(payload, dict):
                     text = "The assistant could not answer that just now. Please try again."
             st.session_state["lsa_result"] = {"nonce": nonce, "kind": "answer", "text": text}
             st.rerun()
+
+        elif kind == "report":
+            # End-of-session report: a Groq narrative grounded in the session.
+            active = st.session_state.get("lsa_active")
+            if not active:
+                text = "Open a real patient to generate a record-grounded end-of-session report."
+            else:
+                try:
+                    from session_report import generate_session_report
+                    text = generate_session_report(active, payload.get("transcript", ""),
+                                                   payload.get("notes", ""))
+                except Exception:
+                    logger.exception("Session report failed")
+                    text = "The report could not be generated. Please try again."
+            st.session_state["lsa_result"] = {"nonce": nonce, "kind": "reportText", "text": text}
+            st.rerun()
